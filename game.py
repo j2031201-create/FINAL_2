@@ -31,10 +31,10 @@ BRANDS = {
 
 # 매물 유형별 시장 특성 (현실 반영)
 TYPE_SPEC = {
-    "아파트":   {"yield":(0.020,0.030),"appr":(0.03,0.12),"tag":"시세차익형","note":"입지·공급절벽으로 가격 상승 · 월세 수익률은 낮음"},
-    "오피스텔": {"yield":(0.050,0.070),"appr":(-0.02,0.02),"tag":"월세수익형","note":"월세 수익률 높음 · 시세 상승 거의 없음"},
-    "상가":     {"yield":(0.060,0.090),"appr":(-0.03,0.02),"tag":"월세수익형","note":"월세 최고 · 단, 공실 위험 존재"},
-    "빌라":     {"yield":(0.040,0.060),"appr":(-0.03,0.01),"tag":"월세수익형","note":"월세 중간 · 시세 하락 위험 주의"},
+    "아파트":   {"yield":(0.020,0.030),"appr":(0.03,0.12),"tag":"시세차익형","note":"입지·공급절벽으로 가격 상승 · 월세 수익률은 낮음","img":"apartment.png","emoji":"🏢","color":"#3498db"},
+    "오피스텔": {"yield":(0.050,0.070),"appr":(-0.02,0.02),"tag":"월세수익형","note":"월세 수익률 높음 · 시세 상승 거의 없음","img":"officetel.png","emoji":"🏬","color":"#2ecc71"},
+    "상가":     {"yield":(0.060,0.090),"appr":(-0.03,0.02),"tag":"월세수익형","note":"월세 최고 · 단, 공실 위험 존재","img":"commercial.png","emoji":"🏪","color":"#e67e22"},
+    "빌라":     {"yield":(0.040,0.060),"appr":(-0.03,0.01),"tag":"월세수익형","note":"월세 중간 · 시세 하락 위험 주의","img":"villa.png","emoji":"🏘️","color":"#9b59b6"},
 }
 
 APPRAISAL = {
@@ -83,6 +83,15 @@ def img_b64(path):
         with open(path,"rb") as f:
             return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
     return None
+
+def type_thumb(t, h=60):
+    """매물 유형별 썸네일 — 이미지 있으면 이미지, 없으면 이모지+색 그라데이션 폴백"""
+    spec=TYPE_SPEC[t]
+    src=img_b64(spec["img"])
+    if src:
+        return f'<div class="thumb" style="background:url(\'{src}\') center/cover;height:{h}px;"></div>'
+    c=spec["color"]
+    return f'<div class="thumb" style="background:linear-gradient(135deg,{c}cc,{c}66);height:{h}px;font-size:{int(h*0.5)}px;">{spec["emoji"]}</div>'
 
 def new_listing(rk):
     t=random.choice(list(TYPE_SPEC.keys()))
@@ -236,8 +245,17 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .news-head{font-size:14px !important;font-weight:700;color:#fff;margin-bottom:6px;}
 .news-info{font-size:13px !important;color:#cfe0f2;padding:2px 0;}
 
-.li-card{background:#2d4a6b;border:1px solid #3a5a80;border-radius:12px;padding:11px 13px;margin-bottom:7px;}
-.li-card.sel{border-color:#FF4136;background:#34557a;}
+.li-card{background:#2d4a6b;border:1px solid #3a5a80;border-radius:12px;padding:11px 13px;margin-bottom:7px;display:flex;gap:12px;align-items:center;}
+.li-card.sel{border-color:#FF4136;background:#34557a;box-shadow:0 0 0 2px rgba(255,65,54,.3);}
+.li-thumb{flex:0 0 auto;}
+.thumb{width:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);}
+.li-body{flex:1;min-width:0;}
+.inv-card{border-radius:12px;padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:center;}
+.inv-profit{background:rgba(46,204,113,.12);border:1px solid #2ecc71;}
+.inv-loss{background:rgba(255,99,72,.12);border:1px solid #FF6347;}
+.empty-box{background:#2d4a6b;border:1px dashed #4a6a90;border-radius:12px;padding:18px;text-align:center;font-size:13px !important;color:#9fb4d0;line-height:1.7;}
+.log-card{background:#28456680;border-radius:8px;padding:7px 10px;margin-bottom:5px;font-size:12px !important;color:#cfe0f2;}
 .li-name{font-size:13px !important;font-weight:700;color:#fff;}
 .li-tag{font-size:11px !important;font-weight:700;padding:1px 8px;border-radius:100px;margin-left:6px;}
 .tag-cap{background:rgba(52,152,219,.25);color:#5dade2;}
@@ -428,10 +446,14 @@ elif S["phase"]=="play":
             sel=S["selected"]==L["id"]
             tcls="tag-cap" if L["tag"]=="시세차익형" else "tag-rent"
             st.markdown(f"""<div class="li-card {'sel' if sel else ''}">
-              <div class="li-name">{L['name']} · {L['type']}<span class="li-tag {tcls}">{L['tag']}</span></div>
-              <div class="li-price">호가 {won(L['current'])} · {L['area']}㎡ · 월세 {L['monthly']}만 (보증금 {won(L['deposit'])})</div>
+              <div class="li-thumb">{type_thumb(L['type'],64)}</div>
+              <div class="li-body">
+                <div class="li-name">{L['name']}<span class="li-tag {tcls}">{L['tag']}</span></div>
+                <div class="li-price">{L['type']} · {L['area']}㎡ · 호가 <b>{won(L['current'])}</b></div>
+                <div class="li-price">월세 {L['monthly']}만 · 보증금 {won(L['deposit'])}</div>
+              </div>
             </div>""", unsafe_allow_html=True)
-            if st.button("이 매물 선택", key=f"sel_{L['id']}"):
+            if st.button(f"{'✓ 선택됨' if sel else '이 매물 선택'}", key=f"sel_{L['id']}", use_container_width=True):
                 S["selected"]=L["id"]; S["quiz"]=None; S["appraised"]=None; S["appraisal_steps"]=[]; st.rerun()
 
         # 감정평가 도구창
@@ -496,10 +518,18 @@ elif S["phase"]=="play":
         if S["owned"]:
             for i,L in enumerate(S["owned"]):
                 p=L["current"]-L["purchase_price"]
-                st.markdown(f'<div class="inv-item {"inv-profit" if p>=0 else "inv-loss"}">{"🟢" if p>=0 else "🔴"} {L["name"]} ({L["type"]}) · 현재 {won(L["current"])} · 월세 {L["monthly"]}만 · 손익 {"+" if p>=0 else ""}{won(p)}</div>', unsafe_allow_html=True)
-                if st.button("매도",key=f"sl_{i}"): sell(i); st.rerun()
+                rate=round(p/L["purchase_price"]*100,1) if L["purchase_price"] else 0
+                st.markdown(f"""<div class="inv-card {"inv-profit" if p>=0 else "inv-loss"}">
+                  <div class="li-thumb">{type_thumb(L['type'],52)}</div>
+                  <div class="li-body">
+                    <div class="li-name">{"🟢" if p>=0 else "🔴"} {L['name']} <span style="font-size:12px;color:#9fb4d0;">({L['type']})</span></div>
+                    <div class="li-price">현재 {won(L['current'])} · 월세 {L['monthly']}만</div>
+                    <div class="li-price" style="font-weight:800;color:{'#2ecc71' if p>=0 else '#FF6347'};">손익 {"+" if p>=0 else ""}{won(p)} ({rate:+.1f}%)</div>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+                if st.button("💸 매도",key=f"sl_{i}", use_container_width=True): sell(i); st.rerun()
         else:
-            st.caption("아직 보유한 매물이 없습니다.")
+            st.markdown('<div class="empty-box">아직 보유한 매물이 없습니다.<br>저평가 매물을 찾아 매수해보세요!</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)  # bright-bg 닫기
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -524,7 +554,10 @@ elif S["phase"]=="play":
         if S["log"]:
             st.markdown('<div class="ptitle" style="margin-top:12px;">📜 거래 기록</div>', unsafe_allow_html=True)
             for e in reversed(S["log"][-6:]):
-                st.markdown(f'<div class="log-item">{e}</div>', unsafe_allow_html=True)
+                if "매수" in e: lc="#2ecc71"
+                elif "매도" in e: lc="#FF6347"
+                else: lc="#9fb4d0"
+                st.markdown(f'<div class="log-card" style="border-left:3px solid {lc};">{e}</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
 # 화면 C: 결산 리포트
