@@ -76,6 +76,14 @@ def won(v):
     s=(f"{eok}억 " if eok else "")+(f"{man:,}만" if man else "")
     return ("-" if neg else "")+(s.strip() or "0")
 
+import os, base64
+def img_b64(path):
+    """이미지가 있으면 base64 data URI 반환, 없으면 None"""
+    if os.path.exists(path):
+        with open(path,"rb") as f:
+            return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+    return None
+
 def new_listing(rk):
     t=random.choice(list(TYPE_SPEC.keys()))
     spec=TYPE_SPEC[t]
@@ -205,17 +213,17 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .g-title{font-size:22px !important;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
 .g-sub{font-size:13px !important;color:#9fb4d0;margin-bottom:12px;}
 
-/* 밝은 배경 컨테이너 (제목~보유매물) */
-.bright-bg{background:linear-gradient(160deg,#24405f 0%,#2d4a6b 100%);
-    border:1px solid #3a5a80;border-radius:18px;padding:18px;margin-bottom:14px;}
+/* 밝은 하늘색 배경 컨테이너 (제목~보유매물) - 시장 디스플레이와 확연히 구분 */
+.bright-bg{background:linear-gradient(160deg,#3d6fa5 0%,#4a7fb8 100%);
+    border:1px solid #6a9fd0;border-radius:18px;padding:18px;margin-bottom:14px;}
 
 .panel{background:#28456680;border:1px solid #3a5a80;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
 .panel-red{background:#284566;border:1px solid #FF4136;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
 .ptitle{font-size:14px !important;font-weight:700;color:#FF6b5e;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 
 /* sticky 스탯 */
-.sticky-stat{position:sticky;top:8px;z-index:50;background:#1a2e4ae6;backdrop-filter:blur(8px);
-    border:1px solid #3a5a80;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.sticky-stat{position:sticky;top:0;z-index:999;background:#16273f;
+    border:1px solid #3a5a80;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.45);}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
 .stat-card{background:#2d4a6b;border:1px solid #3a5a80;border-radius:10px;padding:7px 8px;text-align:center;}
 .stat-card .sl{font-size:11px !important;color:#9fb4d0;margin-bottom:2px;}
@@ -265,6 +273,7 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 /* 설명서 팝업 (반투명) */
 .manual-pop{background:#1a2e4af2;border:2px solid #FF4136;border-radius:16px;padding:20px 24px;margin-bottom:14px;backdrop-filter:blur(6px);}
 .manual-pop h4{color:#FF6b5e;font-size:15px !important;margin:0 0 12px;}
+.manual-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 .manual-item{font-size:13px !important;color:#e4eef8;padding:6px 0;line-height:1.6;display:flex;gap:10px;}
 .manual-item .num{color:#FF6b5e;font-weight:800;flex:0 0 22px;}
 
@@ -302,20 +311,28 @@ MANUAL_ITEMS = [
 ]
 
 def render_manual_popup():
-    items="".join(f'<div class="manual-item"><span class="num">{i+1}</span><span><b>{t}</b> — {d}</span></div>'
-                  for i,(t,d) in enumerate(MANUAL_ITEMS))
-    st.markdown(f'<div class="manual-pop"><h4>📖 게임 설명서</h4>{items}</div>', unsafe_allow_html=True)
+    half1="".join(f'<div class="manual-item"><span class="num">{i+1}</span><span><b>{t}</b> — {d}</span></div>'
+                  for i,(t,d) in enumerate(MANUAL_ITEMS[:4]))
+    half2="".join(f'<div class="manual-item"><span class="num">{i+5}</span><span><b>{t}</b> — {d}</span></div>'
+                  for i,(t,d) in enumerate(MANUAL_ITEMS[4:]))
+    st.markdown(f'''<div class="manual-pop"><h4>📖 게임 설명서</h4>
+      <div class="manual-cols"><div class="manual-col">{half1}</div><div class="manual-col">{half2}</div></div>
+    </div>''', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
 # 화면 A: 인트로
 # ─────────────────────────────────────────────────────
 if S["phase"]=="intro":
-    st.markdown("""<div class="intro-hero">
-      <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
-      <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
-    </div>""", unsafe_allow_html=True)
+    intro_img=img_b64("intro.png")
+    if intro_img:
+        st.markdown(f'<div style="width:100%;border-radius:18px;overflow:hidden;margin-bottom:8px;"><img src="{intro_img}" style="width:100%;display:block;"></div>', unsafe_allow_html=True)
+    else:
+        st.markdown("""<div class="intro-hero">
+          <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
+          <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
+        </div>""", unsafe_allow_html=True)
     render_manual_popup()
-    st.markdown("##### 🗺️ 지역을 선택하고 START")
+    st.markdown('<div style="font-size:16px;font-weight:800;color:#fff;margin:6px 0;">🗺️ 지역을 선택하고 START</div>', unsafe_allow_html=True)
     cols=st.columns(3)
     lc={"서울":"#3498db","대전":"#FFC233","제주":"#FF6347"}
     for col,(k,r) in zip(cols,REGIONS.items()):
@@ -497,9 +514,21 @@ elif S["phase"]=="end":
     if S.get("game_over"): st.error("💔 멘탈 0 → 파산 엔딩! 이자 부담을 감당하지 못했습니다.")
 
     cls="profit" if real>=0 else "loss"; sign="+" if real>=0 else ""
-    st.markdown(f"""<div class="report-hero {cls}">
-      <div class="report-big">{sign}{won(real)}</div>
-      <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div></div>""", unsafe_allow_html=True)
+    # 결과 이미지 배경
+    result_img = img_b64("win.png") if real>=0 else img_b64("lose.png")
+    if result_img:
+        overlay = "rgba(20,50,30,.55)" if real>=0 else "rgba(50,20,20,.6)"
+        st.markdown(f'''<div style="position:relative;border-radius:18px;overflow:hidden;margin-bottom:20px;min-height:240px;
+            background:linear-gradient({overlay},{overlay}),url('{result_img}') center/cover;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;
+            border:2px solid {'#2ecc71' if real>=0 else '#FF6347'};">
+          <div style="font-size:52px;font-weight:900;line-height:1;color:{'#7CFFAA' if real>=0 else '#FF8b7b'};text-shadow:0 2px 12px rgba(0,0,0,.6);">{sign}{won(real)}</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-top:12px;text-shadow:0 1px 6px rgba(0,0,0,.7);">실질 수익 (대출이자·인플레이션 반영)</div>
+        </div>''', unsafe_allow_html=True)
+    else:
+        st.markdown(f"""<div class="report-hero {cls}">
+          <div class="report-big">{sign}{won(real)}</div>
+          <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div></div>""", unsafe_allow_html=True)
 
     c=st.columns(4)
     c[0].metric("총 자산", won(assets)); c[1].metric("순자산", won(net_worth))
