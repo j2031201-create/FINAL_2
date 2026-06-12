@@ -278,6 +278,13 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .manual-item .num{color:#FF6b5e;font-weight:800;flex:0 0 22px;}
 
 .intro-hero{text-align:center;padding:30px 0 10px;}
+.intro-stage{width:100%;min-height:620px;border-radius:18px;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:10px;
+    box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.intro-overlay{padding:0 22px 22px;}
+.intro-manual{background:rgba(16,28,48,.82);border:1.5px solid #FF4136;border-radius:14px;
+    padding:16px 20px;backdrop-filter:blur(4px);}
+.intro-manual h4{color:#FF8b7e;font-size:15px !important;margin:0 0 10px;font-weight:800;}
 .intro-logo{font-size:40px !important;font-weight:900;color:#fff;letter-spacing:-0.02em;}
 .intro-logo .red{color:#FF6b5e;}
 .intro-tag{font-size:14px !important;color:#9fb4d0;margin-top:8px;}
@@ -287,6 +294,22 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .rc-desc{font-size:12px !important;color:#9fb4d0;line-height:1.6;}
 
 .report-hero{text-align:center;padding:24px;border-radius:18px;margin-bottom:20px;}
+/* 결과 이미지 풀 배경 + 카드 오버레이 */
+.result-stage{width:100%;min-height:600px;border-radius:18px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;padding:30px 20px;margin-bottom:20px;
+    box-shadow:0 8px 32px rgba(0,0,0,.45);}
+.result-card{background:rgba(12,22,38,.86);border:2.5px solid #2ecc71;border-radius:18px;
+    padding:24px 28px 22px;max-width:480px;width:100%;text-align:center;backdrop-filter:blur(6px);
+    box-shadow:0 12px 40px rgba(0,0,0,.5);position:relative;}
+.result-badge{display:inline-block;color:#fff;font-weight:900;font-size:15px !important;
+    padding:4px 22px;border-radius:100px;margin-bottom:14px;letter-spacing:.05em;}
+.result-headline{font-size:42px !important;font-weight:900;line-height:1.1;text-shadow:0 2px 14px rgba(0,0,0,.6);}
+.result-sub{font-size:14px !important;color:#dce6f2;margin:8px 0 18px;font-weight:600;}
+.result-rows{text-align:left;}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;
+    border-bottom:1px solid rgba(255,255,255,.1);font-size:14px !important;color:#cfe0f2;font-weight:600;}
+.rrow .rval{font-weight:800;color:#fff;font-size:15px !important;}
+.rrow.total{border-bottom:none;margin-top:6px;padding-top:12px;font-size:15px !important;}
 .report-big{font-size:52px !important;font-weight:900;line-height:1;}
 .report-label{font-size:14px !important;margin-top:10px;font-weight:600;}
 .profit{background:linear-gradient(135deg,rgba(46,204,113,.15),rgba(46,204,113,.05));border:2px solid #2ecc71;}
@@ -324,15 +347,26 @@ def render_manual_popup():
 # ─────────────────────────────────────────────────────
 if S["phase"]=="intro":
     intro_img=img_b64("intro.png")
+    half1="".join(f'<div class="manual-item"><span class="num">{i+1}</span><span><b>{t}</b> — {d}</span></div>'
+                  for i,(t,d) in enumerate(MANUAL_ITEMS[:4]))
+    half2="".join(f'<div class="manual-item"><span class="num">{i+5}</span><span><b>{t}</b> — {d}</span></div>'
+                  for i,(t,d) in enumerate(MANUAL_ITEMS[4:]))
+    manual_html=f'''<div class="intro-manual"><h4>📖 게임 설명서</h4>
+      <div class="manual-cols"><div class="manual-col">{half1}</div><div class="manual-col">{half2}</div></div></div>'''
+
     if intro_img:
-        st.markdown(f'<div style="width:100%;border-radius:18px;overflow:hidden;margin-bottom:8px;"><img src="{intro_img}" style="width:100%;display:block;"></div>', unsafe_allow_html=True)
+        # 이미지를 배경으로, 위쪽엔 이미지가 보이고 아래쪽에 설명서 오버레이
+        st.markdown(f'''
+        <div class="intro-stage" style="background:linear-gradient(to bottom, rgba(22,39,63,0) 35%, rgba(22,39,63,.55) 55%, rgba(22,39,63,.97) 100%), url('{intro_img}') top center/cover;">
+          <div class="intro-overlay">{manual_html}</div>
+        </div>''', unsafe_allow_html=True)
     else:
-        st.markdown("""<div class="intro-hero">
+        st.markdown(f"""<div class="intro-hero">
           <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
           <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
-        </div>""", unsafe_allow_html=True)
-    render_manual_popup()
-    st.markdown('<div style="font-size:16px;font-weight:800;color:#fff;margin:6px 0;">🗺️ 지역을 선택하고 START</div>', unsafe_allow_html=True)
+        </div>{manual_html}""", unsafe_allow_html=True)
+
+    st.markdown('<div style="font-size:17px;font-weight:800;color:#fff;margin:4px 0 8px;text-align:center;">🗺️ 지역을 선택하고 START</div>', unsafe_allow_html=True)
     cols=st.columns(3)
     lc={"서울":"#3498db","대전":"#FFC233","제주":"#FF6347"}
     for col,(k,r) in zip(cols,REGIONS.items()):
@@ -509,30 +543,45 @@ elif S["phase"]=="end":
     inflation_adj=int(start*((1+INFLATION)**10-1))
     nominal=net_worth-start
     real=nominal-S["total_interest"]-inflation_adj
+    rate=real/start*100
+    win = real>=0 and not S.get("game_over")
 
-    st.markdown('<div class="g-title">🏁 최종 수익 리포트</div>', unsafe_allow_html=True)
-    if S.get("game_over"): st.error("💔 멘탈 0 → 파산 엔딩! 이자 부담을 감당하지 못했습니다.")
+    cls="profit" if win else "loss"; sign="+" if real>=0 else ""
+    result_img = img_b64("win.png") if win else img_b64("lose.png")
 
-    cls="profit" if real>=0 else "loss"; sign="+" if real>=0 else ""
-    # 결과 이미지 배경
-    result_img = img_b64("win.png") if real>=0 else img_b64("lose.png")
+    # 등급 메시지
+    if S.get("game_over"): headline,sub="💔 파산했다…","대출 이자를 감당하지 못했습니다"
+    elif rate>=40: headline,sub="🏆 성공했다!","당신은 현명한 영끌러가 되었습니다!"
+    elif rate>=10: headline,sub="💼 성공했다!","인플레이션을 이기는 실질 수익을 냈습니다!"
+    elif rate>=0: headline,sub="👍 본전 사수","원금은 지켰지만 인플레를 겨우 따라갔어요"
+    else: headline,sub="📉 실패했다…","다시 전략을 세워 도전해보세요!"
+
+    acc = "#2ecc71" if win else "#FF4136"
+    bigcol = "#7CFFAA" if win else "#FF8b7b"
+
     if result_img:
-        overlay = "rgba(20,50,30,.55)" if real>=0 else "rgba(50,20,20,.6)"
-        st.markdown(f'''<div style="position:relative;border-radius:18px;overflow:hidden;margin-bottom:20px;min-height:240px;
-            background:linear-gradient({overlay},{overlay}),url('{result_img}') center/cover;
-            display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;
-            border:2px solid {'#2ecc71' if real>=0 else '#FF6347'};">
-          <div style="font-size:52px;font-weight:900;line-height:1;color:{'#7CFFAA' if real>=0 else '#FF8b7b'};text-shadow:0 2px 12px rgba(0,0,0,.6);">{sign}{won(real)}</div>
-          <div style="font-size:15px;font-weight:700;color:#fff;margin-top:12px;text-shadow:0 1px 6px rgba(0,0,0,.7);">실질 수익 (대출이자·인플레이션 반영)</div>
+        ov = "rgba(14,28,20,.62)" if win else "rgba(34,12,12,.66)"
+        st.markdown(f'''
+        <div class="result-stage" style="background:linear-gradient({ov},{ov}),url('{result_img}') center/cover;">
+          <div class="result-card" style="border-color:{acc};">
+            <div class="result-badge" style="background:{acc};">결과</div>
+            <div class="result-headline" style="color:{bigcol};">{headline}</div>
+            <div class="result-sub">{sub}</div>
+            <div class="result-rows">
+              <div class="rrow"><span>💰 실질 수익</span><span class="rval" style="color:{bigcol};">{sign}{won(real)}</span></div>
+              <div class="rrow"><span>🏠 보유 자산 가치</span><span class="rval">{won(assets)}</span></div>
+              <div class="rrow"><span>📊 투자 수익률</span><span class="rval" style="color:{bigcol};">{rate:+.1f}%</span></div>
+              <div class="rrow"><span>📑 총 대출 (부채)</span><span class="rval">-{won(S['debt'])}</span></div>
+              <div class="rrow total" style="border-top:2px solid {acc};"><span>🪙 최종 순자산</span><span class="rval" style="color:{bigcol};">{won(net_worth)}</span></div>
+            </div>
+          </div>
         </div>''', unsafe_allow_html=True)
     else:
+        st.markdown('<div class="g-title">🏁 최종 수익 리포트</div>', unsafe_allow_html=True)
+        if S.get("game_over"): st.error("💔 파산 엔딩!")
         st.markdown(f"""<div class="report-hero {cls}">
           <div class="report-big">{sign}{won(real)}</div>
           <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div></div>""", unsafe_allow_html=True)
-
-    c=st.columns(4)
-    c[0].metric("총 자산", won(assets)); c[1].metric("순자산", won(net_worth))
-    c[2].metric("명목 수익", f"{'+' if nominal>=0 else ''}{won(nominal)}"); c[3].metric("보유 매물", f"{len(S['owned'])}건")
 
     st.markdown('<div class="ptitle" style="margin-top:18px;">🧮 실질 수익 상세 계산</div>', unsafe_allow_html=True)
     st.markdown(f"""<table class="calc-table">
@@ -544,7 +593,6 @@ elif S["phase"]=="end":
       <tr class="total"><td>= 실질 수익</td><td class="r">{sign}{won(real)}</td></tr>
     </table>""", unsafe_allow_html=True)
 
-    rate=real/start*100
     if S.get("game_over"): grade,msg="💔 파산","대출 관리에 실패했습니다. 다음엔 영끌을 조심하세요!"
     elif rate>=40: grade,msg="🏆 부동산 마스터","시장 원리와 감정평가를 완벽히 활용했습니다!"
     elif rate>=10: grade,msg="💼 유능한 투자자","인플레이션을 이기는 실질 수익을 냈습니다!"
