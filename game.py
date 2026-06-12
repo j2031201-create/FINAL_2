@@ -1,6 +1,6 @@
 """
-슬기로운 영끌생활 · 부동산 투자 전략 게임
-감정평가 획득 퀴즈(도구 게이팅) · 영끌 생존 로직 · 픽셀/일러스트 감성
+슬기로운 영끌생활 · 부동산 투자 전략 게임 (캡스톤 최종판)
+Professional Navy & Red · 감정평가 영구해금 · 3매물 스카우팅 · 시장예측 · 실질수익 리포트
 """
 import streamlit as st
 import random, time
@@ -12,75 +12,68 @@ st.set_page_config(page_title="슬기로운 영끌생활", page_icon="🏠",
 # 데이터
 # ─────────────────────────────────────────────────────
 REGIONS = {
-    "서울": {"desc":"높은 수요·강한 상승 모멘텀","level":"초급","vol":0.07,"trend":0.05,"icon":"🏙️",
-             "img":"seoul_map.png","bg":"linear-gradient(135deg,#a8d5a8 0%,#7cb87c 50%,#5a9e5a 100%)"},
-    "대전": {"desc":"신도시 개발·구도심 리스크","level":"중급","vol":0.12,"trend":0.01,"icon":"🌆",
-             "img":"daejeon_map.png","bg":"linear-gradient(135deg,#c2d6a0 0%,#9bbf6f 50%,#7aa34f 100%)"},
-    "제주": {"desc":"수요 한정·유동성 낮음","level":"고급","vol":0.18,"trend":-0.01,"icon":"🏝️",
-             "img":"jeju_map.png","bg":"linear-gradient(135deg,#a0d6c2 0%,#6fbf9b 50%,#4fa37a 100%)"},
+    "서울": {"desc":"높은 수요·강한 상승 모멘텀","level":"초급","vol":0.07,"trend":0.05,"icon":"🏙️"},
+    "대전": {"desc":"신도시 개발·구도심 리스크","level":"중급","vol":0.12,"trend":0.01,"icon":"🌆"},
+    "제주": {"desc":"수요 한정·유동성 낮음","level":"고급","vol":0.18,"trend":-0.01,"icon":"🏝️"},
 }
 BRANDS = ["e편한세상","래미안","힐스테이트","자이","아이파크","롯데캐슬","푸르지오","더샵"]
 
-# 감정평가 3방식 정의 (퀴즈용)
 APPRAISAL = {
     "수익환원법": {"icon":"💰","def":"부동산이 장래 산출할 것으로 기대되는 순수익(임대료)을 환원율로 나누어 가치를 구하는 방식","calc":"income"},
     "거래사례비교법":{"icon":"📊","def":"대상과 유사한 인근의 실제 거래 사례를 수집해 입지·층·향 등을 보정하여 가치를 구하는 방식","calc":"compare"},
-    "원가법":     {"icon":"🏗️","def":"대상을 다시 짓는다고 가정해 토지가격에 건축비를 더하고 감가상각을 뺀 재조달원가로 가치를 구하는 방식","calc":"cost"},
+    "원가법":     {"icon":"🏗️","def":"대상을 다시 짓는다고 가정해 토지가격에 건축비를 더하고 감가상각을 빼서 가치를 구하는 방식","calc":"cost"},
 }
 
 NEWS_POOL = [
-    {"head":"📈 한국은행 기준금리 0.25%p 인하","effect":"대출이율 -0.5% · 시장 회복 기대","mood":"good","delta":0.06,"rate":-0.5,"hp":0},
-    {"head":"📉 기준금리 0.5%p 인상","effect":"대출이율 +1.0% · 이자 부담 가중 · HP -5","mood":"bad","delta":-0.08,"rate":1.0,"hp":5},
-    {"head":"🚇 수도권 GTX 신규 노선 확정","effect":"역세권 수혜 · 전체 매물 +8%","mood":"good","delta":0.09,"rate":0,"hp":0},
-    {"head":"🚨 토지거래허가구역 확대","effect":"갭투자 제한 · 매물 가치 -7%","mood":"bad","delta":-0.07,"rate":0,"hp":0},
-    {"head":"🏗️ 재건축 안전진단 기준 완화","effect":"노후단지 호재 · 전체 +5%","mood":"good","delta":0.06,"rate":0,"hp":0},
-    {"head":"💸 DSR 3단계 전면 시행","effect":"대출 한도 축소 · HP -10","mood":"bad","delta":-0.05,"rate":0,"hp":10},
-    {"head":"🌊 전세 시장 안정세","effect":"임대수익 안정 · 소폭 상승","mood":"good","delta":0.03,"rate":0,"hp":0},
-    {"head":"📰 미분양 8만 가구 돌파","effect":"공급 과잉 우려 · 매물 -6%","mood":"bad","delta":-0.07,"rate":0,"hp":0},
-    {"head":"🏦 특례보금자리론 재출시","effect":"실수요 대출 완화 · 매수심리 개선","mood":"good","delta":0.04,"rate":-0.3,"hp":0},
-    {"head":"📊 소비자물가 3% 돌파","effect":"인플레 헤지 수요 · 전체 +4%","mood":"good","delta":0.05,"rate":0,"hp":0},
+    {"head":"📈 한국은행 기준금리 0.25%p 인하","i1":"호가 +6%","i2":"대출이율 -0.5%","mood":"good","delta":0.06,"rate":-0.5,"hp":0},
+    {"head":"📉 기준금리 0.5%p 인상","i1":"호가 -8%","i2":"대출이율 +1.0% · HP -5","mood":"bad","delta":-0.08,"rate":1.0,"hp":5},
+    {"head":"🚇 수도권 GTX 신규 노선 확정","i1":"호가 +9%","i2":"역세권 수요 급증","mood":"good","delta":0.09,"rate":0,"hp":0},
+    {"head":"🚨 토지거래허가구역 확대","i1":"호가 -7%","i2":"갭투자 제한","mood":"bad","delta":-0.07,"rate":0,"hp":0},
+    {"head":"🏗️ 재건축 안전진단 완화","i1":"호가 +5%","i2":"노후단지 프리미엄","mood":"good","delta":0.05,"rate":0,"hp":0},
+    {"head":"💸 DSR 3단계 시행","i1":"호가 -5%","i2":"대출한도 축소 · HP -10","mood":"bad","delta":-0.05,"rate":0,"hp":10},
+    {"head":"🌊 전세 시장 안정세","i1":"호가 +3%","i2":"임대수익 안정","mood":"good","delta":0.03,"rate":0,"hp":0},
+    {"head":"📰 미분양 8만 가구 돌파","i1":"호가 -6%","i2":"공급과잉 경고","mood":"bad","delta":-0.06,"rate":0,"hp":0},
+    {"head":"🏦 특례보금자리론 재출시","i1":"호가 +4%","i2":"대출이율 -0.3%","mood":"good","delta":0.04,"rate":-0.3,"hp":0},
+    {"head":"📊 소비자물가 3% 돌파","i1":"호가 +5%","i2":"인플레 헤지 수요","mood":"good","delta":0.05,"rate":0,"hp":0},
 ]
-POSITIONS = [(x,y) for x in range(4) for y in range(4)]
+INFLATION = 0.025  # 연 인플레이션 2.5%
 
 # ─────────────────────────────────────────────────────
 # 세션
 # ─────────────────────────────────────────────────────
 def init():
-    D = {"phase":"intro","region":None,"capital":100000,"debt":0,"loan_rate":5.0,
-         "hp":100,"turn":1,"monthly_income":200,"listings":{},"owned":[],"news":None,
-         "selected":None,"quiz":None,"tool_unlocked":None,"appraised":None,
-         "appraisal_steps":[],"log":[],"game_over":False}
+    D={"phase":"intro","region":None,"capital":100000,"debt":0,"loan_rate":5.0,
+       "hp":100,"turn":1,"monthly_income":200,"market":[],"owned":[],
+       "news":None,"next_news":None,"unlocked":[],"selected":None,"quiz":None,
+       "appraised":None,"appraisal_steps":[],"log":[],"total_interest":0,
+       "game_over":False}
     for k,v in D.items():
         if k not in st.session_state: st.session_state[k]=v
 init()
-S = st.session_state
-
-def pk(p): return f"{p[0]}_{p[1]}"
+S=st.session_state
 
 def won(v):
-    v=int(v); neg=v<0; v=abs(v); eok=v//10000; man=v%10000
+    v=int(round(v)); neg=v<0; v=abs(v); eok=v//10000; man=v%10000
     s=(f"{eok}억 " if eok else "")+(f"{man:,}만" if man else "")
     return ("-" if neg else "")+(s.strip() or "0")
 
-def new_listing(pos, rk):
+def new_listing(rk):
     base=random.randint(50000,150000)
     fair=int(base*random.uniform(0.82,1.22))
     rent=int(base*random.uniform(0.035,0.055))
     area=random.randint(60,140)
-    return {"name":random.choice(BRANDS),"type":random.choice(["아파트","오피스텔","상가","빌라"]),
+    return {"id":random.randint(10000,99999),"name":random.choice(BRANDS),
+            "type":random.choice(["아파트","오피스텔","상가","빌라"]),
             "base":base,"fair":fair,"current":base,"rent":rent,"area":area,
-            "pos":pos,"owned":False,"purchase_price":0}
+            "purchase_price":0}
 
-def spawn(rk,count=5):
-    used=set(S["listings"].keys())|{pk(l["pos"]) for l in S["owned"]}
-    avail=[p for p in POSITIONS if pk(p) not in used]
-    random.shuffle(avail)
-    for p in avail[:count]:
-        S["listings"][pk(p)]=new_listing(p,rk)
+def scout(rk):
+    """매 턴 3개 매물만 추출"""
+    S["market"]=[new_listing(rk) for _ in range(3)]
 
 def apply_delta(d):
-    for k in S["listings"]:
-        L=S["listings"][k]; n=random.uniform(-0.02,0.02)
+    for L in S["market"]:
+        n=random.uniform(-0.02,0.02)
         L["current"]=max(10000,int(L["current"]*(1+d+n)))
         L["fair"]=max(10000,int(L["fair"]*(1+d*0.5+n)))
     for L in S["owned"]:
@@ -88,28 +81,28 @@ def apply_delta(d):
         L["current"]=max(10000,int(L["current"]*(1+d+n)))
 
 def make_quiz(method):
-    """method가 정답인 3지선다 — 정의를 보여주고 이름 맞히기"""
-    options=list(APPRAISAL.keys())
-    random.shuffle(options)
-    return {"answer":method,"definition":APPRAISAL[method]["def"],"options":options,"tries":0}
+    opts=list(APPRAISAL.keys()); random.shuffle(opts)
+    return {"answer":method,"definition":APPRAISAL[method]["def"],"options":opts,"tries":0}
 
 def turn_finance():
     mi=int(S["debt"]*(S["loan_rate"]/100)/12)
+    S["total_interest"]+=mi*12  # 연간 이자 누적 (1턴=1년)
     rent=sum(L["rent"] for L in S["owned"])
     net=S["monthly_income"]+rent-mi
-    S["capital"]+=net
+    S["capital"]+=net*12  # 연 단위 반영
     if net<0:
-        S["hp"]=max(0,S["hp"]-max(3,min(20,abs(net)//1000)))
+        S["hp"]=max(0,S["hp"]-max(3,min(20,abs(net)//500)))
 
 def new_turn():
-    S["news"]=random.choice(NEWS_POOL)
+    # 이번 턴 뉴스 = 지난 턴에 예고된 것 (없으면 랜덤)
+    S["news"]=S["next_news"] or random.choice(NEWS_POOL)
+    S["next_news"]=random.choice(NEWS_POOL)  # 다음 턴 예고
     apply_delta(S["news"]["delta"])
     if S["news"]["rate"]: S["loan_rate"]=max(1.0,S["loan_rate"]+S["news"]["rate"])
     if S["news"]["hp"]: S["hp"]=max(0,S["hp"]-S["news"]["hp"])
-    spawn(S["region"],random.randint(1,3))
+    scout(S["region"])
     turn_finance()
-    S["selected"]=None; S["quiz"]=None; S["tool_unlocked"]=None
-    S["appraised"]=None; S["appraisal_steps"]=[]
+    S["selected"]=None; S["quiz"]=None; S["appraised"]=None; S["appraisal_steps"]=[]
     if S["hp"]<=0: S["game_over"]=True; S["phase"]="end"
 
 def do_appraise(method,L):
@@ -128,14 +121,15 @@ def do_appraise(method,L):
         steps=[f"1. 토지 {land:,}만원",f"2. 건축비 {build:,} − 감가 {dep:,}만원",f"🎯 적정가치 = {v:,}만원"]
     return v,steps
 
-def buy(k):
-    L=S["listings"][k]; cost=L["current"]
+def buy(lid):
+    L=next(x for x in S["market"] if x["id"]==lid); cost=L["current"]
     if cost>S["capital"]:
         need=cost-S["capital"]; S["debt"]+=need; S["capital"]=0
         S["log"].append(f"턴{S['turn']}: {L['name']} 영끌매수 (대출 {won(need)})")
     else:
         S["capital"]-=cost; S["log"].append(f"턴{S['turn']}: {L['name']} 매수")
-    L["owned"]=True; L["purchase_price"]=cost; S["owned"].append(L); del S["listings"][k]
+    L["purchase_price"]=cost; S["owned"].append(L)
+    S["market"]=[x for x in S["market"] if x["id"]!=lid]
 
 def sell(i):
     L=S["owned"][i]; S["capital"]+=L["current"]
@@ -149,97 +143,155 @@ def advance():
     st.rerun()
 
 # ─────────────────────────────────────────────────────
-# CSS (밝은 아이보리 + 픽셀/일러스트)
+# CSS · Professional Navy & Red
 # ─────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Galmuri11&display=swap');
-html,body,.stApp{font-family:'Noto Sans KR',sans-serif !important;background:#FFFDF5 !important;color:#3a3226 !important;}
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
+    background:#001f3f !important;color:#eaf0f8 !important;}
 #MainMenu,footer{display:none !important;}
-.main .block-container{padding:1rem 1.5rem 2rem !important;}
-.g-title{font-size:22px;font-weight:900;color:#3a3226;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
-.g-sub{font-size:12px;color:#9a8f7a;margin-bottom:12px;}
+.main .block-container{padding:1rem 1.5rem 2rem !important;max-width:1500px !important;}
+.g-title{font-size:22px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
+.g-sub{font-size:13px;color:#8fa8c8;margin-bottom:12px;}
+
+/* 패널 */
+.panel{background:#003366;border:1px solid #0a4377;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
+.panel-red{background:#003366;border:1px solid #FF0000;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
+.ptitle{font-size:13px;font-weight:700;color:#FF4136;margin-bottom:10px;letter-spacing:.02em;display:flex;align-items:center;gap:6px;}
+
+/* 스탯 */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
-.stat-card{background:#fff;border:2px solid #ece3d0;border-radius:14px;padding:9px 10px;text-align:center;box-shadow:0 2px 0 #ece3d0;}
-.stat-card .sl{font-size:11px;color:#a89c84;margin-bottom:3px;}
-.stat-card .sv{font-size:15px;font-weight:800;color:#3a3226;}
-.sv.danger{color:#e74c3c;} .sv.warn{color:#e67e22;}
-.news-good{background:#f3fbf0;border:2px solid #7cc47c;border-radius:14px;padding:11px 14px;margin-bottom:10px;box-shadow:0 2px 0 #cfe8cf;}
-.news-bad{background:#fdf2f0;border:2px solid #e89080;border-radius:14px;padding:11px 14px;margin-bottom:10px;box-shadow:0 2px 0 #f2d2cc;}
-.news-head{font-size:14px;font-weight:800;color:#3a3226;margin-bottom:3px;}
-.news-effect{font-size:12px;color:#6a6052;}
-.quiz-box{background:#fffaf0;border:2px solid #f0c040;border-radius:14px;padding:14px 16px;margin:10px 0;box-shadow:0 2px 0 #f0e0b0;}
-.quiz-def{font-size:13px;color:#5a5142;line-height:1.7;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;border:1px dashed #d0c4a0;}
-.appraisal-box{background:#f5f0ff;border:2px solid #9b7cd4;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 2px 0 #ddd0f0;}
-.ap-step{font-size:12px;color:#5a5142;padding:4px 0;border-bottom:1px solid #e8e0d0;}
-.ap-step:last-child{border-bottom:none;font-size:14px;font-weight:800;color:#7c4dff;padding-top:8px;}
-.li-card{background:#fff;border:2px solid #ece3d0;border-radius:14px;padding:11px 13px;margin-bottom:7px;box-shadow:0 2px 0 #ece3d0;}
-.li-card.sel{border-color:#f0a830;background:#fffaf0;box-shadow:0 2px 0 #f0d8a0;}
-.li-name{font-size:14px;font-weight:800;color:#3a3226;}
-.li-price{font-size:12px;color:#6a6052;margin-top:2px;}
-.owned-item{border-radius:12px;padding:9px 11px;margin-bottom:6px;font-size:12px;font-weight:600;}
-.owned-profit{background:#f3fbf0;border:2px solid #4caf50;}
-.owned-loss{background:#fdf2f0;border:2px solid #e74c3c;}
-.log-item{font-size:11px;color:#9a8f7a;padding:3px 0;border-bottom:1px solid #f2ece0;}
+.stat-card{background:#003366;border:1px solid #0a4377;border-radius:12px;padding:9px 10px;text-align:center;}
+.stat-card .sl{font-size:11px;color:#7e98ba;margin-bottom:3px;}
+.stat-card .sv{font-size:15px;font-weight:800;color:#fff;}
+.sv.danger{color:#FF4136;} .sv.warn{color:#FFB700;}
 
-/* 픽셀 타일맵 */
-.map-frame{border:4px solid #5a4a32;border-radius:12px;overflow:hidden;box-shadow:0 4px 0 #3a2e1e;background:#7cb87c;}
-.map-grid{position:relative;width:100%;padding-bottom:100%;}
-.map-inner{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);}
-.tile{position:relative;display:flex;align-items:center;justify-content:center;
-    background-image:radial-gradient(circle at 30% 30%, rgba(255,255,255,.08) 2px, transparent 2px),
-        radial-gradient(circle at 70% 70%, rgba(0,0,0,.06) 2px, transparent 2px);
-    background-size:14px 14px;border:1px solid rgba(0,0,0,.06);}
-.bld{width:62%;height:62%;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    font-size:8px;font-weight:800;color:#fff;cursor:pointer;transition:.15s;
-    image-rendering:pixelated;box-shadow:0 4px 0 rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.5);}
-.bld:hover{transform:translateY(-3px);box-shadow:0 7px 0 rgba(0,0,0,.35);}
-.bld-avail{background:linear-gradient(135deg,#ff8a5c,#e8590c);}
-.bld-sel{background:linear-gradient(135deg,#ffd54f,#ff9800);box-shadow:0 4px 0 rgba(0,0,0,.35),0 0 0 3px #fff,0 0 0 6px #ffd54f;}
-.bld-profit{background:linear-gradient(135deg,#66bb6a,#2e7d32);border-color:#a5f5a5;}
-.bld-loss{background:linear-gradient(135deg,#ef5350,#c62828);border-color:#ffb3b3;}
-.bubble{position:absolute;top:2px;left:50%;transform:translateX(-50%);background:#fff;border:2px solid #5a4a32;
-    border-radius:8px;padding:2px 6px;white-space:nowrap;font-size:9px;font-weight:800;z-index:5;box-shadow:0 2px 0 rgba(0,0,0,.2);}
-.bubble.up{color:#2e7d32;} .bubble.down{color:#c62828;} .bubble.price{color:#3a3226;}
-.tree{position:absolute;font-size:13px;opacity:.55;pointer-events:none;}
-.map-legend{text-align:center;margin-top:8px;font-size:11px;color:#9a8f7a;}
+/* 뉴스 */
+.news{border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+.news-good{background:rgba(46,204,113,.12);border:1px solid #2ecc71;}
+.news-bad{background:rgba(255,65,54,.12);border:1px solid #FF4136;}
+.news-head{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px;}
+.news-info{font-size:12px;color:#c8d6e8;padding:2px 0;}
 
-.region-card{background:#fff;border:3px solid #ece3d0;border-radius:18px;padding:22px;text-align:center;box-shadow:0 4px 0 #ece3d0;height:100%;}
-.rc-icon{font-size:42px;} .rc-name{font-size:20px;font-weight:900;color:#3a3226;margin-top:6px;}
-.rc-level{display:inline-block;font-size:11px;font-weight:800;padding:2px 12px;border-radius:100px;margin:6px 0;}
-.rc-desc{font-size:12px;color:#9a8f7a;line-height:1.6;}
-.stButton>button{font-family:'Noto Sans KR',sans-serif !important;font-weight:800 !important;border-radius:12px !important;
-    background:#fff !important;border:2px solid #d8ccb0 !important;color:#3a3226 !important;box-shadow:0 3px 0 #d8ccb0 !important;transition:.1s !important;}
-.stButton>button:hover{background:#fff8e8 !important;border-color:#f0a830 !important;box-shadow:0 3px 0 #f0c060 !important;transform:translateY(-1px);}
-[data-testid="stMetric"]{background:#fff;border:2px solid #ece3d0;border-radius:12px;padding:8px 12px;}
+/* 매물 카드 — 우측과 동일 폰트 크기(13px) */
+.li-card{background:#003366;border:1px solid #0a4377;border-radius:12px;padding:11px 13px;margin-bottom:7px;}
+.li-card.sel{border-color:#FF0000;background:#04294f;}
+.li-name{font-size:13px;font-weight:700;color:#fff;}
+.li-price{font-size:13px;color:#a8bdd8;margin-top:2px;}
+
+/* 퀴즈 */
+.quiz-box{background:#04294f;border:1px solid #FF0000;border-radius:12px;padding:14px;margin:10px 0;}
+.quiz-def{font-size:13px;color:#dce6f2;line-height:1.7;background:#001f3f;border-radius:10px;padding:11px;margin-bottom:8px;border:1px dashed #2a557f;}
+
+/* 감정평가 결과 */
+.ap-box{background:#04294f;border:1px solid #2ecc71;border-radius:12px;padding:14px;margin:10px 0;}
+.ap-step{font-size:12px;color:#c8d6e8;padding:4px 0;border-bottom:1px solid #0a4377;}
+.ap-step:last-child{border-bottom:none;font-size:14px;font-weight:800;color:#2ecc71;padding-top:8px;}
+
+/* 인벤토리 */
+.inv-item{border-radius:10px;padding:9px 11px;margin-bottom:6px;font-size:13px;font-weight:600;}
+.inv-profit{background:rgba(46,204,113,.1);border:1px solid #2ecc71;}
+.inv-loss{background:rgba(255,65,54,.1);border:1px solid #FF4136;}
+
+/* 우측 디스플레이 — 13px 통일 */
+.display{background:#04294f;border:1px solid #0a4377;border-radius:14px;padding:16px;}
+.disp-item{font-size:13px;color:#c8d6e8;padding:6px 0;border-bottom:1px solid #0a4377;}
+.disp-item:last-child{border-bottom:none;}
+.disp-label{color:#7e98ba;font-size:12px;}
+.forecast{background:rgba(255,183,0,.1);border:1px solid #FFB700;border-radius:12px;padding:13px;margin-top:10px;}
+.forecast-head{font-size:13px;font-weight:700;color:#FFB700;margin-bottom:6px;}
+.forecast-body{font-size:13px;color:#e8d8a8;line-height:1.6;}
+
+.log-item{font-size:12px;color:#7e98ba;padding:3px 0;border-bottom:1px solid #0a3060;}
+
+/* 버튼 */
+.stButton>button{font-family:'Urbanist','Noto Sans KR',sans-serif !important;font-weight:700 !important;
+    border-radius:10px !important;background:#003366 !important;border:1px solid #1a5490 !important;
+    color:#fff !important;transition:.12s !important;}
+.stButton>button:hover{background:#FF0000 !important;border-color:#FF0000 !important;transform:translateY(-1px);}
+[data-testid="stMetric"]{background:#003366;border:1px solid #0a4377;border-radius:12px;padding:10px 14px;}
+[data-testid="stMetricValue"]{color:#fff !important;} [data-testid="stMetricLabel"]{color:#8fa8c8 !important;}
+
+/* 인트로 */
+.intro-hero{text-align:center;padding:30px 0 10px;}
+.intro-logo{font-size:40px;font-weight:900;color:#fff;letter-spacing:-0.02em;}
+.intro-logo .red{color:#FF4136;}
+.intro-tag{font-size:14px;color:#8fa8c8;margin-top:8px;}
+.manual{background:#003366;border:1px solid #0a4377;border-radius:14px;padding:20px 24px;margin:18px 0;}
+.manual h4{color:#FF4136;font-size:15px;margin:0 0 12px;}
+.manual-item{font-size:13px;color:#dce6f2;padding:6px 0;line-height:1.6;display:flex;gap:10px;}
+.manual-item .num{color:#FF4136;font-weight:800;flex:0 0 22px;}
+.region-card{background:#003366;border:2px solid #0a4377;border-radius:16px;padding:20px;text-align:center;height:100%;}
+.rc-icon{font-size:38px;} .rc-name{font-size:19px;font-weight:900;color:#fff;margin-top:6px;}
+.rc-level{display:inline-block;font-size:11px;font-weight:700;padding:2px 12px;border-radius:100px;margin:6px 0;}
+.rc-desc{font-size:12px;color:#8fa8c8;line-height:1.6;}
+
+/* 결산 리포트 */
+.report-hero{text-align:center;padding:24px;border-radius:18px;margin-bottom:20px;}
+.report-big{font-size:52px;font-weight:900;line-height:1;letter-spacing:-0.02em;}
+.report-label{font-size:14px;margin-top:10px;font-weight:600;}
+.profit{background:linear-gradient(135deg,rgba(46,204,113,.15),rgba(46,204,113,.05));border:2px solid #2ecc71;}
+.profit .report-big{color:#2ecc71;} .profit .report-label{color:#82e0aa;}
+.loss{background:linear-gradient(135deg,rgba(255,65,54,.15),rgba(255,65,54,.05));border:2px solid #FF4136;}
+.loss .report-big{color:#FF4136;} .loss .report-label{color:#ff8b82;}
+.calc-table{width:100%;border-collapse:collapse;margin:14px 0;}
+.calc-table td{padding:10px 14px;border-bottom:1px solid #0a4377;font-size:14px;color:#dce6f2;}
+.calc-table td.r{text-align:right;font-weight:700;color:#fff;}
+.calc-table tr.total td{border-top:2px solid #FF0000;border-bottom:none;font-size:16px;font-weight:900;color:#fff;padding-top:14px;}
 </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
-# 화면 A: 인트로
+# 화면 A: 인트로 (랜딩 + 설명서)
 # ─────────────────────────────────────────────────────
 if S["phase"]=="intro":
-    st.markdown('<div class="g-title">🏠 슬기로운 영끌생활</div>', unsafe_allow_html=True)
-    st.markdown('<div class="g-sub">감정평가 퀴즈를 풀고 저평가 매물을 찾아라 · 영끌도 가능, 단 멘탈 관리는 필수!</div>', unsafe_allow_html=True)
-    st.markdown("---")
+    st.markdown("""
+    <div class="intro-hero">
+      <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
+      <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 감정평가를 배우고 저평가 매물을 찾아라</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="manual">
+      <h4>📖 게임 설명서</h4>
+      <div class="manual-item"><span class="num">1</span><span><b>목표</b> — 초기자본 10억으로 10턴(10년) 동안 순자산을 최대한 불리세요.</span></div>
+      <div class="manual-item"><span class="num">2</span><span><b>매물 스카우팅</b> — 매 턴 무작위 3개 매물이 공개됩니다. 호가와 적정가치를 비교하세요.</span></div>
+      <div class="manual-item"><span class="num">3</span><span><b>감정평가 퀴즈</b> — 평가 방식의 정의를 읽고 이름을 맞히면 그 도구가 <b>영구 해금</b>됩니다.</span></div>
+      <div class="manual-item"><span class="num">4</span><span><b>영끌(대출)</b> — 자본이 부족해도 매수 가능. 단, 이자가 소득을 넘으면 멘탈(HP)이 깎여 0이면 파산!</span></div>
+      <div class="manual-item"><span class="num">5</span><span><b>시장 예측</b> — 우측 디스플레이의 '다음 턴 예고'를 보고 전략적으로 매수/매도하세요.</span></div>
+      <div class="manual-item"><span class="num">6</span><span><b>실질 수익</b> — 종료 후 대출이자와 인플레이션을 뺀 '진짜 수익'으로 평가됩니다.</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("##### 🗺️ 지역을 선택하고 START")
     cols=st.columns(3)
-    lc={"서울":"#3498db","대전":"#e67e22","제주":"#e74c3c"}
+    lc={"서울":"#3498db","대전":"#FFB700","제주":"#FF4136"}
     for col,(k,r) in zip(cols,REGIONS.items()):
         with col:
             c=lc[k]
             st.markdown(f"""<div class="region-card"><div class="rc-icon">{r['icon']}</div>
               <div class="rc-name">{k}</div><div class="rc-level" style="background:{c}22;color:{c};">{r['level']}</div>
               <div class="rc-desc">{r['desc']}</div></div>""", unsafe_allow_html=True)
-            if st.button(f"{k} 시작", key=f"go_{k}", use_container_width=True):
-                S["region"]=k; S["phase"]="play"; spawn(k,5); new_turn(); st.rerun()
+            if st.button(f"▶ {k} START", key=f"go_{k}", use_container_width=True):
+                S["region"]=k; S["phase"]="play"
+                ph=st.empty()
+                for msg in ["🗺️ 지도 로딩 중...","🏢 매물 스카우팅 중...","📊 시장 분석 중..."]:
+                    ph.markdown(f'<div style="text-align:center;padding:40px;font-size:18px;font-weight:700;color:#FF4136;">{msg}</div>', unsafe_allow_html=True)
+                    time.sleep(0.5)
+                ph.empty()
+                S["next_news"]=random.choice(NEWS_POOL)
+                new_turn(); st.rerun()
 
 # ─────────────────────────────────────────────────────
 # 화면 B: 플레이
 # ─────────────────────────────────────────────────────
 elif S["phase"]=="play":
     rk=S["region"]; R=REGIONS[rk]
-    st.markdown(f'<div class="g-title">{R["icon"]} 슬기로운 영끌생활 — {rk} ({R["level"]})</div>', unsafe_allow_html=True)
-    left,right=st.columns([1,1],gap="large")
+    st.markdown(f'<div class="g-title">{R["icon"]} 슬기로운 영끌생활 — {rk} <span style="color:#FF4136;font-size:14px;">{R["level"]}</span></div>', unsafe_allow_html=True)
+
+    left,right=st.columns([1.15,0.85],gap="large")
 
     with left:
         mi=int(S["debt"]*(S["loan_rate"]/100)/12); rent=sum(L["rent"] for L in S["owned"])
@@ -259,61 +311,65 @@ elif S["phase"]=="play":
 
         if S["news"]:
             nc="news-good" if S["news"]["mood"]=="good" else "news-bad"
-            st.markdown(f'<div class="{nc}"><div class="news-head">{S["news"]["head"]}</div><div class="news-effect">💡 {S["news"]["effect"]}</div></div>', unsafe_allow_html=True)
+            st.markdown(f"""<div class="news {nc}"><div class="news-head">{S['news']['head']}</div>
+              <div class="news-info">📌 {S['news']['i1']}</div>
+              <div class="news-info">📌 {S['news']['i2']}</div></div>""", unsafe_allow_html=True)
 
-        st.markdown("**🏢 매물 목록**")
-        for k,L in list(S["listings"].items()):
-            sel=S["selected"]==k
+        st.markdown('<div class="ptitle">🏢 이번 턴 매물 (3건 스카우팅)</div>', unsafe_allow_html=True)
+        for L in S["market"]:
+            sel=S["selected"]==L["id"]
             st.markdown(f"""<div class="li-card {'sel' if sel else ''}">
               <div class="li-name">{L['name']} · {L['type']} ({L['area']}㎡)</div>
               <div class="li-price">호가 {won(L['current'])} · {int(L['current']/L['area']):,}만원/㎡ · 월세 {L['rent']:,}만</div>
             </div>""", unsafe_allow_html=True)
-            if st.button("이 매물 선택", key=f"selp_{k}"):
-                S["selected"]=k; S["quiz"]=None; S["tool_unlocked"]=None
-                S["appraised"]=None; S["appraisal_steps"]=[]; st.rerun()
+            if st.button("이 매물 선택", key=f"sel_{L['id']}"):
+                S["selected"]=L["id"]; S["quiz"]=None; S["appraised"]=None; S["appraisal_steps"]=[]; st.rerun()
 
-        # ── 선택된 매물: 감정평가 퀴즈 게이팅 ──
-        if S["selected"] and S["selected"] in S["listings"]:
-            L=S["listings"][S["selected"]]
-            st.markdown("---")
-            st.markdown(f"**🎯 {L['name']}** 감정평가하기")
+        # ── 감정평가 도구창 ──
+        if S["selected"] and any(x["id"]==S["selected"] for x in S["market"]):
+            L=next(x for x in S["market"] if x["id"]==S["selected"])
+            st.markdown('<div class="ptitle" style="margin-top:14px;">🎯 감정평가 도구</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:13px;color:#a8bdd8;margin-bottom:8px;">선택: <b style="color:#fff;">{L["name"]}</b> · 호가 {won(L["current"])}</div>', unsafe_allow_html=True)
 
             if S["appraised"] is None:
-                if S["tool_unlocked"] is None:
-                    if S["quiz"] is None:
-                        st.caption("감정평가 도구를 쓰려면 먼저 퀴즈를 통과해야 해요!")
-                        qc=st.columns(3)
-                        for i,(m,info) in enumerate(APPRAISAL.items()):
-                            with qc[i]:
-                                if st.button(f"{info['icon']} {m}", key=f"pick_{m}"):
-                                    S["quiz"]=make_quiz(m); st.rerun()
-                    else:
-                        q=S["quiz"]
-                        st.markdown(f'<div class="quiz-box"><div style="font-weight:800;margin-bottom:6px;">📖 다음 설명은 어떤 감정평가 방식일까요?</div><div class="quiz-def">{q["definition"]}</div></div>', unsafe_allow_html=True)
-                        oc=st.columns(3)
-                        for i,opt in enumerate(q["options"]):
-                            with oc[i]:
-                                if st.button(opt, key=f"ans_{opt}_{q['tries']}"):
-                                    if opt==q["answer"]:
-                                        S["tool_unlocked"]=q["answer"]; S["quiz"]=None; st.rerun()
-                                    else:
-                                        S["hp"]=max(0,S["hp"]-5); S["quiz"]["tries"]+=1
-                                        if S["hp"]<=0: S["game_over"]=True; S["phase"]="end"
-                                        st.rerun()
-                        if q["tries"]>0:
-                            st.warning(f"❌ 오답! HP -5 (멘탈 {S['hp']}) · 다시 골라보세요")
-                else:
-                    m=S["tool_unlocked"]
-                    st.success(f"✅ 퀴즈 통과! [{m}] 도구 활성화")
-                    if st.button(f"🎲 {m}으로 감정평가 실행", key="run_ap", use_container_width=True):
-                        ph=st.empty()
-                        for d in [".","..","..."]:
-                            ph.markdown(f'<div style="text-align:center;padding:14px;font-weight:800;">🎲 감정평가 중{d}</div>', unsafe_allow_html=True)
-                            time.sleep(0.45)
-                        v,steps=do_appraise(m,L); S["appraised"]=v; S["appraisal_steps"]=steps
-                        ph.empty(); st.rerun()
+                st.markdown('<div class="panel">', unsafe_allow_html=True)
+                st.caption(f"해금된 도구: {', '.join(S['unlocked']) if S['unlocked'] else '없음 (퀴즈로 해금)'}")
+                ac=st.columns(3)
+                for i,(m,info) in enumerate(APPRAISAL.items()):
+                    with ac[i]:
+                        unlocked=m in S["unlocked"]
+                        label=f"{info['icon']} {m}" + (" ✓" if unlocked else " 🔒")
+                        if st.button(label, key=f"tool_{m}"):
+                            if unlocked:
+                                ph=st.empty()
+                                for d in [".","..","..."]:
+                                    ph.markdown(f'<div style="text-align:center;padding:12px;font-weight:800;color:#FF4136;">🎲 감정평가 중{d}</div>', unsafe_allow_html=True)
+                                    time.sleep(0.4)
+                                v,steps=do_appraise(m,L); S["appraised"]=v; S["appraisal_steps"]=steps
+                                ph.empty(); st.rerun()
+                            else:
+                                S["quiz"]=make_quiz(m); st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                if S["quiz"]:
+                    q=S["quiz"]
+                    st.markdown(f'<div class="quiz-box"><div style="font-weight:800;color:#fff;margin-bottom:6px;">📖 이 설명은 어떤 감정평가 방식?</div><div class="quiz-def">{q["definition"]}</div></div>', unsafe_allow_html=True)
+                    oc=st.columns(3)
+                    for i,opt in enumerate(q["options"]):
+                        with oc[i]:
+                            if st.button(opt, key=f"ans_{opt}_{q['tries']}"):
+                                if opt==q["answer"]:
+                                    if q["answer"] not in S["unlocked"]:
+                                        S["unlocked"].append(q["answer"])
+                                    S["quiz"]=None; st.rerun()
+                                else:
+                                    S["hp"]=max(0,S["hp"]-5); S["quiz"]["tries"]+=1
+                                    if S["hp"]<=0: S["game_over"]=True; S["phase"]="end"
+                                    st.rerun()
+                    if q["tries"]>0:
+                        st.warning(f"❌ 오답! HP -5 (현재 {S['hp']}) · 다시 시도")
             else:
-                st.markdown('<div class="appraisal-box">'+"".join(f'<div class="ap-step">{s}</div>' for s in S["appraisal_steps"])+'</div>', unsafe_allow_html=True)
+                st.markdown('<div class="ap-box">'+"".join(f'<div class="ap-step">{s}</div>' for s in S["appraisal_steps"])+'</div>', unsafe_allow_html=True)
                 diff=S["appraised"]-L["current"]
                 if diff>2000: st.success(f"💎 저평가! 적정가 대비 {won(abs(diff))} 저렴")
                 elif diff<-2000: st.warning(f"⚠️ 고평가! 적정가 대비 {won(abs(diff))} 비쌈")
@@ -321,79 +377,119 @@ elif S["phase"]=="play":
                 bc=st.columns(2)
                 with bc[0]:
                     msg=f"💰 매수 ({won(L['current'])})"
-                    if L["current"]>S["capital"]:
-                        msg=f"🏦 영끌매수 (+대출 {won(L['current']-S['capital'])})"
-                    if st.button(msg, key="buy", use_container_width=True):
+                    if L["current"]>S["capital"]: msg=f"🏦 영끌매수 (+대출 {won(L['current']-S['capital'])})"
+                    if st.button(msg,key="buy",use_container_width=True):
                         buy(S["selected"]); S["selected"]=None; S["appraised"]=None; st.rerun()
                 with bc[1]:
-                    if st.button("⏭️ 패스 → 다음 턴", key="pass", use_container_width=True):
-                        advance()
+                    if st.button("⏭️ 패스",key="pass",use_container_width=True):
+                        S["selected"]=None; S["appraised"]=None; st.rerun()
 
+        # ── 인벤토리 (시각 분리) ──
+        st.markdown('<div class="ptitle" style="margin-top:14px;">🏦 보유 매물 (인벤토리)</div>', unsafe_allow_html=True)
         if S["owned"]:
-            st.markdown("---"); st.markdown("**🏦 보유 매물**")
             for i,L in enumerate(S["owned"]):
                 p=L["current"]-L["purchase_price"]
-                st.markdown(f'<div class="owned-item {"owned-profit" if p>=0 else "owned-loss"}">{"🟢" if p>=0 else "🔴"} {L["name"]} · 현재 {won(L["current"])} · 손익 {"+" if p>=0 else ""}{won(p)}</div>', unsafe_allow_html=True)
-                if st.button("매도", key=f"sl_{i}"):
-                    sell(i); st.rerun()
-
-        if not S["selected"]:
-            st.markdown("---")
-            if st.button("⏭️ 다음 턴으로", use_container_width=True):
-                advance()
-
-    # ── 우측: 픽셀 타일맵 ──
-    with right:
-        import os, base64
-        img={"서울":"seoul_map.png","대전":"daejeon_map.png","제주":"jeju_map.png"}[rk]
-        if os.path.exists(img):
-            with open(img,"rb") as f: b64=base64.b64encode(f.read()).decode()
-            inner_bg=f'background:url("data:image/png;base64,{b64}") center/cover;'
+                st.markdown(f'<div class="inv-item {"inv-profit" if p>=0 else "inv-loss"}">{"🟢" if p>=0 else "🔴"} {L["name"]} · 현재 {won(L["current"])} · 손익 {"+" if p>=0 else ""}{won(p)}</div>', unsafe_allow_html=True)
+                if st.button("매도",key=f"sl_{i}"): sell(i); st.rerun()
         else:
-            inner_bg=f"background:{R['bg']};"
-        trees="🌳🌲🌴🌳"
-        tiles=""
-        for y in range(4):
-            for x in range(4):
-                k=pk((x,y))
-                owned_here=next((l for l in S["owned"] if l["pos"]==(x,y)),None)
-                deco=f'<span class="tree" style="top:4px;left:4px;">{random.choice("🌿🌱🍀")}</span>' if (x+y)%3==0 and k not in S["listings"] and not owned_here else ""
-                if k in S["listings"]:
-                    L=S["listings"][k]; sel=S["selected"]==k
-                    cls="bld bld-sel" if sel else "bld bld-avail"
-                    bub=f'<div class="bubble price">{won(L["current"])}</div>'
-                    tiles+=f'<div class="tile">{bub}<div class="{cls}">{L["name"][:2]}</div></div>'
-                elif owned_here:
-                    p=owned_here["current"]-owned_here["purchase_price"]
-                    rate=round(p/owned_here["purchase_price"]*100,1) if owned_here["purchase_price"] else 0
-                    cls="bld bld-profit" if p>=0 else "bld bld-loss"
-                    bub=f'<div class="bubble {"up" if p>=0 else "down"}">{"+" if p>=0 else ""}{rate:.0f}%</div>'
-                    tiles+=f'<div class="tile">{bub}<div class="{cls}">{owned_here["name"][:2]}</div></div>'
-                else:
-                    tiles+=f'<div class="tile">{deco}</div>'
-        st.markdown(f'<div class="map-frame"><div class="map-grid"><div class="map-inner" style="{inner_bg}">{tiles}</div></div></div>', unsafe_allow_html=True)
-        st.markdown('<div class="map-legend">🟠 매물 · 🟡 선택 · 🟢 보유(수익) · 🔴 보유(손실)</div>', unsafe_allow_html=True)
+            st.caption("아직 보유한 매물이 없습니다.")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("⏭️ 다음 턴으로 진행", use_container_width=True):
+            advance()
+
+    # ── 우측 디스플레이 ──
+    with right:
+        st.markdown('<div class="ptitle">📊 시장 디스플레이</div>', unsafe_allow_html=True)
+        total_asset=S["capital"]+sum(L["current"] for L in S["owned"])
+        st.markdown(f"""<div class="display">
+          <div class="disp-item"><span class="disp-label">총 자산</span><br>{won(total_asset)}</div>
+          <div class="disp-item"><span class="disp-label">순자산 (자산-부채)</span><br>{won(total_asset-S['debt'])}</div>
+          <div class="disp-item"><span class="disp-label">누적 대출이자</span><br>{won(S['total_interest'])}</div>
+          <div class="disp-item"><span class="disp-label">보유 매물</span><br>{len(S['owned'])}건</div>
+          <div class="disp-item"><span class="disp-label">해금 감정평가</span><br>{', '.join(S['unlocked']) if S['unlocked'] else '없음'}</div>
+        </div>""", unsafe_allow_html=True)
+
+        # 시장 예측 (다음 턴 예고)
+        if S["next_news"]:
+            nn=S["next_news"]
+            arrow="📈 상승 신호" if nn["mood"]=="good" else "📉 하락 신호"
+            st.markdown(f"""<div class="forecast">
+              <div class="forecast-head">🔮 다음 턴 시장 예측</div>
+              <div class="forecast-body">{arrow}<br>예상 이슈: {nn['head'].split(' ',1)[1] if ' ' in nn['head'] else nn['head']}<br>
+              <span style="color:#FFB700;">{nn['i1']} · {nn['i2']}</span></div>
+            </div>""", unsafe_allow_html=True)
+            st.caption("💡 예측을 보고 이번 턴 매수/매도를 결정하세요")
+
         if S["log"]:
-            st.markdown("**📜 기록**")
-            for e in reversed(S["log"][-5:]):
+            st.markdown('<div class="ptitle" style="margin-top:12px;">📜 거래 기록</div>', unsafe_allow_html=True)
+            for e in reversed(S["log"][-6:]):
                 st.markdown(f'<div class="log-item">{e}</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
-# 화면 C: 결과
+# 화면 C: 최종 결산 리포트
 # ─────────────────────────────────────────────────────
 elif S["phase"]=="end":
-    assets=S["capital"]+sum(L["current"] for L in S["owned"]); nw=assets-S["debt"]
-    rate=(nw-100000)/100000*100
-    st.markdown('<div class="g-title">🏁 게임 종료!</div>', unsafe_allow_html=True)
-    if S.get("game_over"): st.error("💔 멘탈 0 → 파산! 이자를 감당하지 못했습니다.")
-    elif rate>=50: st.success(f"🏆 부동산 마스터! 순자산 수익률 {rate:+.1f}%")
-    elif rate>=0: st.info(f"👍 안정형 투자자 · 수익률 {rate:+.1f}%")
-    else: st.warning(f"📚 수업료를 낸 새내기 · {rate:+.1f}%")
+    # 전환 연출
+    if not S.get("_report_shown"):
+        ph=st.empty()
+        for msg in ["📊 최종 자산 집계 중...","🧮 실질 수익 계산 중...","📑 리포트 생성 중..."]:
+            ph.markdown(f'<div style="text-align:center;padding:60px;font-size:20px;font-weight:800;color:#FF4136;">{msg}</div>', unsafe_allow_html=True)
+            time.sleep(0.6)
+        ph.empty(); S["_report_shown"]=True
+
+    assets=S["capital"]+sum(L["current"] for L in S["owned"])
+    net_worth=assets-S["debt"]
+    start=100000
+    # 실질수익 = 순자산 - 초기자본 - 누적이자 - 인플레보정
+    inflation_adj=int(start*((1+INFLATION)**10-1))  # 10년 인플레 누적
+    nominal=net_worth-start
+    real=nominal-S["total_interest"]-inflation_adj
+
+    st.markdown('<div class="g-title">🏁 최종 수익 리포트</div>', unsafe_allow_html=True)
+    if S.get("game_over"):
+        st.error("💔 멘탈 0 → 파산 엔딩! 이자 부담을 감당하지 못했습니다.")
+
+    cls="profit" if real>=0 else "loss"
+    sign="+" if real>=0 else ""
+    st.markdown(f"""<div class="report-hero {cls}">
+      <div class="report-big">{sign}{won(real)}</div>
+      <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div>
+    </div>""", unsafe_allow_html=True)
+
     c=st.columns(4)
-    c[0].metric("총자산",won(assets)); c[1].metric("부채",won(S["debt"]))
-    c[2].metric("순자산",won(nw)); c[3].metric("보유매물",f"{len(S['owned'])}건")
-    st.markdown("**📜 전체 기록**")
-    for e in S["log"]: st.markdown(f'<div class="log-item">{e}</div>', unsafe_allow_html=True)
+    c[0].metric("총 자산", won(assets))
+    c[1].metric("순자산", won(net_worth))
+    c[2].metric("명목 수익", f"{'+' if nominal>=0 else ''}{won(nominal)}")
+    c[3].metric("보유 매물", f"{len(S['owned'])}건")
+
+    # 상세 계산표
+    st.markdown('<div class="ptitle" style="margin-top:18px;">🧮 실질 수익 상세 계산</div>', unsafe_allow_html=True)
+    st.markdown(f"""<table class="calc-table">
+      <tr><td>최종 순자산 (자산 − 부채)</td><td class="r">{won(net_worth)}</td></tr>
+      <tr><td>(−) 초기 자본금</td><td class="r">− {won(start)}</td></tr>
+      <tr><td>= 명목 수익</td><td class="r">{'+' if nominal>=0 else ''}{won(nominal)}</td></tr>
+      <tr><td>(−) 누적 대출 이자</td><td class="r">− {won(S['total_interest'])}</td></tr>
+      <tr><td>(−) 인플레이션 보정 (연 {INFLATION*100:.1f}%·10년)</td><td class="r">− {won(inflation_adj)}</td></tr>
+      <tr class="total"><td>= 실질 수익</td><td class="r">{sign}{won(real)}</td></tr>
+    </table>""", unsafe_allow_html=True)
+
+    # 등급
+    rate=real/start*100
+    if S.get("game_over"): grade,msg="💔 파산","대출 관리에 실패했습니다. 다음엔 영끌을 조심하세요!"
+    elif rate>=40: grade,msg="🏆 부동산 마스터","감정평가와 시장예측을 완벽히 활용했습니다!"
+    elif rate>=10: grade,msg="💼 유능한 투자자","인플레이션을 이기는 실질 수익을 냈습니다!"
+    elif rate>=0: grade,msg="👍 본전 사수","원금은 지켰지만 인플레를 겨우 따라갔어요."
+    else: grade,msg="📚 수업료를 낸 새내기","손실도 경험! 감정평가의 중요성을 배웠습니다."
+    st.markdown(f"""<div class="panel-red" style="text-align:center;margin-top:8px;">
+      <div style="font-size:22px;font-weight:900;color:#fff;">{grade}</div>
+      <div style="font-size:13px;color:#a8bdd8;margin-top:6px;">{msg}</div>
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="ptitle">📜 전체 거래 기록</div>', unsafe_allow_html=True)
+    for e in S["log"]:
+        st.markdown(f'<div class="log-item">{e}</div>', unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🔄 다시 시작", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
