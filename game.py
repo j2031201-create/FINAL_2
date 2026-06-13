@@ -65,7 +65,14 @@ RARE_LISTINGS = [
     {"name":"🌟 신도시 핵심 상권","type":"상가","mult":1.6,"appr_bonus":0.06,"desc":"유동인구 폭발 예정"},
     {"name":"🌟 국가산단 인접 부지","type":"빌라","mult":1.4,"appr_bonus":0.05,"desc":"개발 잠재력 보유"},
 ]
-RARE_CHANCE = 0.18  # 매 턴 희귀매물 1건 섞일 확률
+RARE_CHANCE = 0.30  # 약 3턴에 1번꼴로 희귀매물 등장 (3개 매물 중 1건 교체)
+
+# AI NPC 투자자 (Gemini 기반 의사결정 에이전트)
+NPCS = {
+    "박과장": {"style":"공격형","desc":"레버리지 적극 활용·아파트 선호·상승 기대 시 공격 매수","emoji":"🔥"},
+    "김부장": {"style":"안정형","desc":"현금 보유 선호·대출 최소화·위험 회피","emoji":"🛡️"},
+    "이사장": {"style":"수익형","desc":"오피스텔·상가·빌라 선호·월세 현금흐름 중시","emoji":"💵"},
+}
 
 # 랜덤 인생 이벤트 (3~4턴마다)
 LIFE_EVENTS = [
@@ -111,6 +118,8 @@ def init():
        "new_achievements":[],     # 이번에 띄울 업적
        "life_event":None,         # 인생 이벤트
        "apt_count":0,"rent_count":0,"max_debt":0,  # 투자스타일 분석용
+       # NPC 경쟁 시스템
+       "npcs":{}, "npc_comments":{}, "show_ranking":False,
        }
     for k,v in D.items():
         if k not in st.session_state: st.session_state[k]=v
@@ -193,7 +202,7 @@ def new_listing(rk, rare=False):
         base=int(random.randint(80000,160000)*r["mult"])
         y=random.uniform(*spec["yield"]); monthly=max(50,min(400,int(base*y/12)))
         return {"id":random.randint(10000,99999),"name":r["name"],"type":t,"tag":spec["tag"],
-                "base":base,"fair":int(base*1.25),"current":base,"monthly":monthly,
+                "base":base,"fair":int(base*1.40),"current":base,"monthly":monthly,
                 "deposit":monthly*12,"area":area,"purchase_price":0,"rare":True,
                 "appr_bonus":r["appr_bonus"],"rare_desc":r["desc"]}
     t=random.choice(list(TYPE_SPEC.keys()))
@@ -252,6 +261,86 @@ def turn_finance():
         over=interest_year-(S["income_year"]+rent_year)
         S["hp"]=max(0,S["hp"]-max(5,min(25,over//1000)))
 
+# ── NPC 경쟁 시스템 (Gemini 기반 AI 에이전트) ──────────
+def init_npcs():
+    start=REGIONS[S["region"]]["capital"]
+    S["npcs"]={name:{"capital":start,"debt":0,"owned":[],"style":info["style"]}
+               for name,info in NPCS.items()}
+    S["npc_comments"]={}
+
+def npc_networth(npc):
+    return npc["capital"]+sum(o["current"] for o in npc["owned"])-npc["debt"]
+
+def npc_market_update():
+    """NPC 보유 매물도 시장 변동 반영 (플레이어와 동일 알고리즘 간이 적용)"""
+    for npc in S["npcs"].values():
+        for o in npc["owned"]:
+            spec=TYPE_SPEC[o["type"]]
+            if o["type"]=="아파트": ch=random.uniform(*spec["appr"])+S["news"]["delta"]
+            else: ch=random.uniform(*spec["appr"])+S["news"]["delta"]
+            o["current"]=max(10000,int(o["current"]*(1+ch)))
+        # 월세·이자 정산
+        rent=sum(o["monthly"]*12 for o in npc["owned"])
+        interest=int(npc["debt"]*(S["loan_rate"]/100))
+        npc["capital"]+=3000+rent-interest
+
+def run_npc_turn():
+    """Gemini 호출 1회로 NPC 3명의 의사결정을 JSON 배열로 받음"""
+    market_str="\n".join(f"- {L['name']} ({L['type']}, {L['tag']}) 호가 {won(L['current'])}, 월세 {L['monthly']}만"
+                         for L in S["market"])
+    npc_state=""
+    for name,npc in S["npcs"].items():
+        owned=", ".join(o["name"] for o in npc["owned"]) or "없음"
+        npc_state+=f"\n[{name}/{NPCS[name]['style']}] 현금 {won(npc['capital'])}, 대출 {won(npc['debt'])}, 보유: {owned}"
+    prompt=f"""당신은 부동산 투자 시뮬레이션 게임의 AI 투자자 3명을 동시에 연기합니다.
+각 투자자는 자신의 성향에 따라 이번 턴 행동을 결정합니다.
+
+[시장 상황] 턴 {S['turn']}/10
+- 뉴스: {S['news']['head']} ({S['news']['i1']}, {S['news']['i2']})
+- 시장 신뢰도: {S['confidence']}/100, 대출이율: {S['loan_rate']:.1f}%
+
+[현재 공개 매물 3개]
+{market_str}
+
+[투자자별 성향과 현황]
+- 박과장(공격형): 레버리지 적극·아파트 선호·상승기대 시 공격매수{npc_state.split(chr(10))[1] if len(npc_state.split(chr(10)))>1 else ''}
+- 김부장(안정형): 현금보유·대출최소·위험회피{npc_state.split(chr(10))[2] if len(npc_state.split(chr(10)))>2 else ''}
+- 이사장(수익형): 오피스텔/상가/빌라 선호·월세 중시{npc_state.split(chr(10))[3] if len(npc_state.split(chr(10)))>3 else ''}
+
+각 투자자의 결정을 아래 JSON 배열로만 답하세요. 다른 텍스트 없이 JSON만:
+[
+ {{"name":"박과장","action":"BUY|HOLD|SELL","target":"매물명 또는 빈칸","comment":"한 문장 코멘트"}},
+ {{"name":"김부장","action":"BUY|HOLD|SELL","target":"","comment":"한 문장"}},
+ {{"name":"이사장","action":"BUY|HOLD|SELL","target":"","comment":"한 문장"}}
+]"""
+    raw=call_gemini(prompt,1500)
+    npc_market_update()
+    try:
+        js=raw[raw.find("["):raw.rfind("]")+1]
+        decisions=json.loads(js)
+    except Exception:
+        decisions=[]
+    # 결정 실행
+    decided={d.get("name"):d for d in decisions} if decisions else {}
+    for name,npc in S["npcs"].items():
+        d=decided.get(name)
+        if not d:
+            S["npc_comments"][name]="(시장을 관망하고 있습니다.)"
+            continue
+        act=d.get("action","HOLD"); tgt=d.get("target","")
+        S["npc_comments"][name]=d.get("comment","")
+        if act=="BUY" and tgt:
+            match=next((L for L in S["market"] if tgt in L["name"] or L["name"] in tgt),None)
+            if match:
+                cost=match["current"]
+                if cost>npc["capital"]:
+                    npc["debt"]+=cost-npc["capital"]; npc["capital"]=0
+                else: npc["capital"]-=cost
+                buy_copy=dict(match); buy_copy["purchase_price"]=cost
+                npc["owned"].append(buy_copy)
+        elif act=="SELL" and npc["owned"]:
+            sold=npc["owned"].pop(0); npc["capital"]+=sold["current"]
+
 def new_turn():
     S["news"]=S["next_news"] or random.choice(NEWS_POOL)
     S["next_news"]=random.choice(NEWS_POOL)
@@ -262,6 +351,10 @@ def new_turn():
     if S["news"]["rate"]: S["loan_rate"]=max(1.0,S["loan_rate"]+S["news"]["rate"])
     if S["news"]["hp"]: S["hp"]=max(0,S["hp"]-S["news"]["hp"])
     scout(S["region"])
+    # NPC 투자자 의사결정 (Gemini 기반) — 키 있을 때만
+    if S["npcs"] and st.secrets.get("GEMINI_API_KEY",""):
+        try: run_npc_turn()
+        except Exception: pass
     turn_finance()
     # 인생 이벤트 (3~4턴마다)
     S["life_event"]=None
@@ -302,6 +395,11 @@ def do_appraise(method,L):
                f"2. 건축비 {build:,}만 − 감가상각 {dep:,}만원",
                f"🎯 재조달원가 = {v:,}만원 (시장가 대비 낮음)"]
         tip = "⚠️ 원가법은 시장 프리미엄·입지 가치를 반영 못해 항상 낮게 나와요. 통건물 매입이 아니면 실거래엔 부적합!"
+    # 희귀 매물: 개발 호재 등 미래가치를 반영해 감정가에 프리미엄 (항상 저평가로 평가됨)
+    if L.get("rare"):
+        v = int(max(v, L["current"]) * (1.18 + L.get("appr_bonus",0)))
+        steps.append(f"🌟 희귀매물 미래가치 프리미엄 반영 → 최종 {v:,}만원")
+        tip = "🌟 개발 호재가 반영된 희귀 매물! 현재 호가보다 미래가치가 높습니다."
     return v,steps,tip
 
 def buy(lid):
@@ -434,6 +532,16 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 /* AI 응답 박스 */
 .ai-box{background:linear-gradient(135deg,rgba(124,77,255,.15),rgba(124,77,255,.05));border:1.5px solid #9b59b6;border-radius:14px;padding:16px;margin:10px 0;white-space:pre-wrap;font-size:13px !important;color:#e4eef8;line-height:1.7;}
 .ai-title{font-size:14px !important;font-weight:800;color:#c39bd3;margin-bottom:10px;}
+/* AI 투자 리그 랭킹 */
+.rank-board{background:linear-gradient(135deg,#1a2e4a,#0f2238);border:1.5px solid #FFD700;border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.rank-title{font-size:14px !important;font-weight:800;color:#FFD700;margin-bottom:10px;}
+.rank-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;margin-bottom:3px;}
+.rank-medal{font-size:18px !important;flex:0 0 26px;}
+.rank-name{flex:1;font-size:13px !important;font-weight:700;color:#fff;}
+.rank-nw{font-size:13px !important;font-weight:700;color:#dce6f2;flex:0 0 100px;text-align:right;}
+.rank-rate{font-size:13px !important;font-weight:800;flex:0 0 64px;text-align:right;}
+.npc-cmt-box{background:#1a2e4a;border:1px solid #3a5a80;border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+.npc-cmt{font-size:12px !important;color:#cfe0f2;padding:4px 0;line-height:1.5;}
 .li-thumb{flex:0 0 auto;}
 .thumb{width:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     box-shadow:0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);}
@@ -582,6 +690,7 @@ if S["phase"]=="intro":
               <div class="rc-desc">{r['desc']}<br><b style="color:#fff;">초기자본 {won(r['capital'])}</b></div></div>""", unsafe_allow_html=True)
             if st.button(f"▶ {k} START", key=f"go_{k}", use_container_width=True):
                 S["region"]=k; S["phase"]="play"; S["capital"]=r["capital"]
+                init_npcs()
                 ph=st.empty()
                 for msg in ["🗺️ 지도 로딩 중...","🏢 매물 스카우팅 중...","📊 시장 분석 중..."]:
                     ph.markdown(f'<div style="text-align:center;padding:40px;font-size:18px;font-weight:700;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
@@ -641,15 +750,46 @@ elif S["phase"]=="play":
         <div class="pb-conf-val">{S['confidence']}</div></div>
     </div>""", unsafe_allow_html=True)
 
-    top1,top2=st.columns([3,1])
+    top1,top2,top3=st.columns([2,1,1])
     with top1:
         st.markdown(f'<div class="g-title">{R["icon"]} 슬기로운 영끌생활 — {rk}</div>', unsafe_allow_html=True)
     with top2:
+        if st.button("🏆 투자 리그 " + ("닫기" if S["show_ranking"] else "열기"), use_container_width=True):
+            S["show_ranking"]=not S["show_ranking"]; st.rerun()
+    with top3:
         if st.button("📖 설명서 " + ("닫기" if S["show_manual"] else "열기"), use_container_width=True):
             S["show_manual"]=not S["show_manual"]; st.rerun()
 
     if S["show_manual"]:
         render_manual_popup()
+
+    # ── AI 투자 리그 랭킹 (실시간) ──
+    if S["show_ranking"] and S["npcs"]:
+        player_nw=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+        start=REGIONS[rk]["capital"]
+        board=[("🙋 플레이어(나)", player_nw, "나")]
+        for name,npc in S["npcs"].items():
+            board.append((f"{NPCS[name]['emoji']} {name}({NPCS[name]['style']})", npc_networth(npc), name))
+        board.sort(key=lambda x:x[1], reverse=True)
+        medals=["🥇","🥈","🥉","4️⃣"]
+        rows=""
+        for i,(label,nw,key) in enumerate(board):
+            rate=(nw-start)/start*100
+            hl="background:rgba(255,215,0,.12);" if key=="나" else ""
+            rows+=f"""<div class="rank-row" style="{hl}">
+              <span class="rank-medal">{medals[i]}</span>
+              <span class="rank-name">{label}</span>
+              <span class="rank-nw">{won(nw)}</span>
+              <span class="rank-rate" style="color:{'#2ecc71' if rate>=0 else '#FF6347'};">{rate:+.1f}%</span>
+            </div>"""
+        st.markdown(f'<div class="rank-board"><div class="rank-title">🏆 AI 투자 리그 · 실시간 순위 (턴 {S["turn"]}/10)</div>{rows}</div>', unsafe_allow_html=True)
+        # NPC 코멘트
+        if S["npc_comments"]:
+            cmts=""
+            for name,cmt in S["npc_comments"].items():
+                if cmt: cmts+=f'<div class="npc-cmt">{NPCS[name]["emoji"]} <b>{name}</b>: "{cmt}"</div>'
+            if cmts: st.markdown(f'<div class="npc-cmt-box">{cmts}</div>', unsafe_allow_html=True)
+
 
     # sticky 스탯 (스크롤 따라옴)
     mi=int(S["debt"]*(S["loan_rate"]/100)/12); rent=sum(L["monthly"] for L in S["owned"])
@@ -960,6 +1100,43 @@ elif S["phase"]=="end":
     st.markdown(f"""<div class="panel-red" style="text-align:center;margin-top:8px;">
       <div style="font-size:22px;font-weight:900;color:#fff;">{grade}</div>
       <div style="font-size:13px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
+
+    # ── AI 투자 리그 최종 결과 ──
+    if S["npcs"]:
+        st.markdown('<div class="ptitle" style="margin-top:16px;">🏆 AI 투자 리그 최종 결과</div>', unsafe_allow_html=True)
+        start=REGIONS[S["region"]]["capital"]
+        player_nw=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+        board=[("🙋 플레이어(나)", player_nw, "나", "-")]
+        for name,npc in S["npcs"].items():
+            board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, NPCS[name]['style']))
+        board.sort(key=lambda x:x[1], reverse=True)
+        medals=["🥇","🥈","🥉","4️⃣"]
+        rows=""
+        for i,(label,nw,key,style) in enumerate(board):
+            rate=(nw-start)/start*100
+            hl="background:rgba(255,215,0,.15);" if key=="나" else ""
+            rows+=f"""<div class="rank-row" style="{hl}">
+              <span class="rank-medal">{medals[i]}</span>
+              <span class="rank-name">{label} <span style="font-size:11px;color:#9fb4d0;">{style if style!='-' else '플레이어'}</span></span>
+              <span class="rank-nw">{won(nw)}</span>
+              <span class="rank-rate" style="color:{'#2ecc71' if rate>=0 else '#FF6347'};">{rate:+.1f}%</span>
+            </div>"""
+        st.markdown(f'<div class="rank-board">{rows}</div>', unsafe_allow_html=True)
+
+        # Gemini 승패 분석
+        if "ai_league_analysis" not in st.session_state:
+            player_rank=next(i for i,(_,_,k,_) in enumerate(board) if k=="나")+1
+            board_str="\n".join(f"{i+1}위 {lbl} 순자산 {won(nw)} 수익률 {(nw-start)/start*100:+.1f}%" for i,(lbl,nw,k,s) in enumerate(board))
+            prompt=f"""부동산 투자 시뮬레이션 게임이 끝났습니다. 플레이어와 AI 투자자 3명의 최종 성적입니다.
+
+[최종 순위]
+{board_str}
+
+플레이어는 {player_rank}위입니다.
+플레이어와 AI 투자자들의 전략을 비교하여, 플레이어가 왜 이 순위가 되었는지(승리 또는 패배 요인) 5줄 내외로 한국어로 분석해주세요. 구체적인 투자 행동 차이를 근거로 설명하세요."""
+            with st.spinner("🤖 투자 리그 분석 중..."):
+                st.session_state["ai_league_analysis"]=call_gemini(prompt,1500)
+        st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 리그 분석 — 승패 요인</div>{st.session_state.get("ai_league_analysis","")}</div>', unsafe_allow_html=True)
 
     # AI 투자 성향 분석 (게임 종료 시 자동 생성)
     st.markdown('<div class="ptitle" style="margin-top:16px;">🤖 AI 투자 성향 분석</div>', unsafe_allow_html=True)
