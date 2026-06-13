@@ -4,6 +4,7 @@
 """
 import streamlit as st
 import random, time
+import requests, json
 
 st.set_page_config(page_title="슬기로운 영끌생활", page_icon="🏠",
                    layout="wide", initial_sidebar_state="collapsed")
@@ -153,6 +154,22 @@ def img_b64(path):
         with open(path,"rb") as f:
             return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
     return None
+
+# ── Gemini API 공통 호출 함수 ──────────────────────────
+def call_gemini(prompt: str, max_tokens: int = 800) -> str:
+    """Gemini API 호출. 키 없거나 오류 시 안내 메시지 반환 (앱 안 깨짐)"""
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return "⚠️ Gemini API 키가 설정되지 않았습니다. Streamlit secrets에 GEMINI_API_KEY를 입력하세요."
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    body = {"contents":[{"parts":[{"text": prompt}]}],
+            "generationConfig":{"maxOutputTokens": max_tokens, "temperature": 0.7}}
+    try:
+        r = requests.post(url, json=body, timeout=15)
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        return f"⚠️ AI 응답 오류: {str(e)[:80]}"
 
 def type_thumb(t, h=60):
     """매물 유형별 썸네일 — 이미지 있으면 이미지, 없으면 이모지+색 그라데이션 폴백"""
@@ -408,6 +425,9 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .turn-loading{text-align:center;padding:50px;font-size:20px !important;font-weight:800;color:#FFC233;text-shadow:0 2px 12px rgba(255,194,51,.4);}
 .ach-badges{display:flex;flex-wrap:wrap;gap:8px;}
 .ach-badge{background:linear-gradient(135deg,#FFD700,#FFA500);color:#3a2800;font-size:12px !important;font-weight:800;padding:5px 12px;border-radius:100px;}
+/* AI 응답 박스 */
+.ai-box{background:linear-gradient(135deg,rgba(124,77,255,.15),rgba(124,77,255,.05));border:1.5px solid #9b59b6;border-radius:14px;padding:16px;margin:10px 0;white-space:pre-wrap;font-size:13px !important;color:#e4eef8;line-height:1.7;}
+.ai-title{font-size:14px !important;font-weight:800;color:#c39bd3;margin-bottom:10px;}
 .li-thumb{flex:0 0 auto;}
 .thumb{width:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     box-shadow:0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);}
@@ -801,6 +821,64 @@ elif S["phase"]=="play":
                 else: lc="#9fb4d0"
                 st.markdown(f'<div class="log-card" style="border-left:3px solid {lc};">{e}</div>', unsafe_allow_html=True)
 
+        # ── AI 기능 패널 ──
+        st.markdown('<div class="ptitle" style="margin-top:14px;">🤖 AI 어시스턴트</div>', unsafe_allow_html=True)
+
+        # 1) AI 투자 코치
+        if st.button("🤖 AI 투자 코치", use_container_width=True, key="ai_coach"):
+            total_asset=S["capital"]+sum(L["current"] for L in S["owned"])
+            owned_str="\n".join(f"- {L['name']}({L['type']}) 현재가 {won(L['current'])}" for L in S["owned"]) or "없음"
+            news_str=S["news"]["head"] if S["news"] else "없음"
+            next_str=S["next_news"]["head"] if S["next_news"] else "없음"
+            prompt=f"""당신은 한국 부동산 투자 전문가 코치입니다. 다음 상황을 분석하고 투자 전략을 조언해주세요.
+
+[현재 게임 상황]
+- 턴: {S['turn']}/10 (1턴=1년)
+- 보유 현금: {won(S['capital'])}
+- 총 자산: {won(total_asset)}
+- 대출 잔액: {won(S['debt'])} (연이율 {S['loan_rate']:.1f}%)
+- 멘탈(HP): {S['hp']}/100
+- 시장 신뢰도: {S['confidence']}/100
+- 보유 매물:
+{owned_str}
+- 이번 턴 뉴스: {news_str}
+- 다음 턴 예상: {next_str}
+
+다음 4가지를 간결하게 한국어로 답해주세요:
+1. 현재 시장 상황 분석 (2~3문장)
+2. 추천 투자 전략 (2~3문장)
+3. 위험도: 상/중/하 + 이유 한 줄
+4. 추천 행동: 매수 / 관망 / 매도 중 하나 + 이유 한 줄"""
+            with st.spinner("🤖 AI 분석 중..."):
+                result = call_gemini(prompt, 600)
+            st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 코치</div>{result}</div>', unsafe_allow_html=True)
+
+        # 2) AI 감정평가사 (매물 선택된 경우만)
+        if S["selected"] and any(x["id"]==S["selected"] for x in S["market"]):
+            L_sel=next(x for x in S["market"] if x["id"]==S["selected"])
+            if st.button("🤖 AI 감정평가 의견", use_container_width=True, key="ai_appraise"):
+                news_str=S["news"]["head"] if S["news"] else "없음"
+                prompt=f"""당신은 한국 부동산 감정평가 전문가입니다. 다음 매물을 분석해주세요.
+
+[매물 정보]
+- 매물명: {L_sel['name']}
+- 유형: {L_sel['type']} ({L_sel['tag']})
+- 면적: {L_sel['area']}㎡
+- 호가: {won(L_sel['current'])}
+- 월세: {L_sel['monthly']}만원 (보증금 {won(L_sel['deposit'])})
+- 지역: {S['region']} ({REGIONS[S['region']]['level']})
+- 현재 시장: {news_str}
+- 시장 신뢰도: {S['confidence']}/100
+
+다음 4가지를 간결하게 한국어로 답해주세요:
+1. 적정성 평가: 호가가 적정한지 판단 (2문장)
+2. 고평가/저평가 여부: 명확히 판단 + 근거 한 줄
+3. 투자 적합도: 이 매물 유형({L_sel['type']})의 수익 원천 설명 (2문장)
+4. 종합 의견: 매수 추천 여부 한 줄"""
+                with st.spinner("🤖 감정평가 분석 중..."):
+                    result = call_gemini(prompt, 500)
+                st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 감정평가사</div>{result}</div>', unsafe_allow_html=True)
+
 # ─────────────────────────────────────────────────────
 # 화면 C: 결산 리포트
 # ─────────────────────────────────────────────────────
@@ -877,7 +955,36 @@ elif S["phase"]=="end":
       <div style="font-size:22px;font-weight:900;color:#fff;">{grade}</div>
       <div style="font-size:13px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
 
-    # 투자 스타일 분석
+    # AI 투자 성향 분석 (게임 종료 시 자동 생성)
+    st.markdown('<div class="ptitle" style="margin-top:16px;">🤖 AI 투자 성향 분석</div>', unsafe_allow_html=True)
+    if "ai_style_result" not in st.session_state:
+        log_str="\n".join(S["log"][-10:]) or "없음"
+        assets_end=S["capital"]+sum(L["current"] for L in S["owned"])
+        nw_end=assets_end-S["debt"]
+        prompt=f"""당신은 한국 부동산 투자 행동 분석 전문가입니다. 플레이어의 10턴 투자 행동을 분석해주세요.
+
+[플레이어 투자 기록]
+- 지역: {S['region']} ({REGIONS[S['region']]['level']})
+- 총 매수 횟수: {S['buy_count']}회
+- 아파트 매수: {S['apt_count']}건 / 수익형 매수: {S['rent_count']}건
+- 최대 대출 규모: {won(S['max_debt'])}
+- 최종 순자산: {won(nw_end)}
+- 연속 수익: {S['win_streak']}회
+- 획득 업적: {', '.join(S['achievements']) if S['achievements'] else '없음'}
+- 거래 기록:
+{log_str}
+
+다음 4가지를 한국어로 분석해주세요:
+1. 투자 성향 유형: 공격형/보수형/레버리지형/가치투자형/임대사업형 중 하나 + 이유 (2문장)
+2. 강점: 이 플레이어가 잘한 점 (2문장)
+3. 개선점: 다음 게임에서 보완할 점 (2문장)
+4. 실제 투자 조언: 이 성향의 투자자에게 주는 현실적 조언 (2~3문장)"""
+        with st.spinner("🤖 투자 성향 분석 중..."):
+            result=call_gemini(prompt, 700)
+        st.session_state["ai_style_result"]=result
+    st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 성향 분석 결과</div>{st.session_state.get("ai_style_result","")}</div>', unsafe_allow_html=True)
+
+    # 투자 스타일 분석 (rule-based)
     if S["apt_count"]>S["rent_count"]: style,sdesc="📈 가치투자자","아파트 시세차익 중심으로 투자했습니다"
     elif S["rent_count"]>S["apt_count"]: style,sdesc="🏠 임대사업가","월세수익형 매물로 안정적 현금흐름을 추구했습니다"
     else: style,sdesc="⚖️ 균형투자자","시세차익과 월세수익을 고르게 노렸습니다"
