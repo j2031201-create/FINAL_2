@@ -156,18 +156,24 @@ def img_b64(path):
     return None
 
 # ── Gemini API 공통 호출 함수 ──────────────────────────
-def call_gemini(prompt: str, max_tokens: int = 800) -> str:
+def call_gemini(prompt: str, max_tokens: int = 2048) -> str:
     """Gemini API 호출. 키 없거나 오류 시 안내 메시지 반환 (앱 안 깨짐)"""
     api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key:
         return "⚠️ Gemini API 키가 설정되지 않았습니다. Streamlit secrets에 GEMINI_API_KEY를 입력하세요."
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     body = {"contents":[{"parts":[{"text": prompt}]}],
-            "generationConfig":{"maxOutputTokens": max_tokens, "temperature": 0.7}}
+            "generationConfig":{"maxOutputTokens": max_tokens, "temperature": 0.7,
+                                "thinkingConfig":{"thinkingBudget": 0}}}
     try:
-        r = requests.post(url, json=body, timeout=15)
+        r = requests.post(url, json=body, timeout=20)
         r.raise_for_status()
-        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+        data = r.json()
+        cand = data["candidates"][0]
+        # 응답 텍스트 추출 (parts가 여러 개일 수 있어 합침)
+        parts = cand.get("content",{}).get("parts",[])
+        text = "".join(p.get("text","") for p in parts)
+        return text.strip() if text.strip() else "⚠️ AI 응답이 비어 있습니다. 다시 시도해주세요."
     except Exception as e:
         return f"⚠️ AI 응답 오류: {str(e)[:80]}"
 
@@ -477,7 +483,7 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .manual-item .num{color:#FF6b5e;font-weight:800;flex:0 0 22px;}
 
 .intro-hero{text-align:center;padding:30px 0 10px;}
-.intro-stage{width:100%;min-height:620px;border-radius:18px;overflow:hidden;
+.intro-stage{width:100%;min-height:440px;border-radius:18px;overflow:hidden;
     display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:10px;
     box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .intro-overlay{padding:0 22px 22px;}
@@ -556,7 +562,7 @@ if S["phase"]=="intro":
     if intro_img:
         # 이미지를 배경으로, 위쪽엔 이미지가 보이고 아래쪽에 설명서 오버레이
         st.markdown(f'''
-        <div class="intro-stage" style="background:linear-gradient(to bottom, rgba(22,39,63,0) 35%, rgba(22,39,63,.55) 55%, rgba(22,39,63,.97) 100%), url('{intro_img}') top center/cover;">
+        <div class="intro-stage" style="background:linear-gradient(to bottom, rgba(22,39,63,0) 45%, rgba(22,39,63,.6) 62%, rgba(22,39,63,.97) 100%), url('{intro_img}') top center/cover;">
           <div class="intro-overlay">{manual_html}</div>
         </div>''', unsafe_allow_html=True)
     else:
@@ -565,7 +571,7 @@ if S["phase"]=="intro":
           <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
         </div>{manual_html}""", unsafe_allow_html=True)
 
-    st.markdown('<div style="font-size:17px;font-weight:800;color:#fff;margin:4px 0 8px;text-align:center;">🗺️ 지역을 선택하고 START</div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
     cols=st.columns(3)
     lc={"서울":"#3498db","대전":"#FFC233","제주":"#FF6347"}
     for col,(k,r) in zip(cols,REGIONS.items()):
@@ -850,7 +856,7 @@ elif S["phase"]=="play":
 3. 위험도: 상/중/하 + 이유 한 줄
 4. 추천 행동: 매수 / 관망 / 매도 중 하나 + 이유 한 줄"""
             with st.spinner("🤖 AI 분석 중..."):
-                result = call_gemini(prompt, 600)
+                result = call_gemini(prompt, 2048)
             st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 코치</div>{result}</div>', unsafe_allow_html=True)
 
         # 2) AI 감정평가사 (매물 선택된 경우만)
@@ -876,7 +882,7 @@ elif S["phase"]=="play":
 3. 투자 적합도: 이 매물 유형({L_sel['type']})의 수익 원천 설명 (2문장)
 4. 종합 의견: 매수 추천 여부 한 줄"""
                 with st.spinner("🤖 감정평가 분석 중..."):
-                    result = call_gemini(prompt, 500)
+                    result = call_gemini(prompt, 2048)
                 st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 감정평가사</div>{result}</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
@@ -980,7 +986,7 @@ elif S["phase"]=="end":
 3. 개선점: 다음 게임에서 보완할 점 (2문장)
 4. 실제 투자 조언: 이 성향의 투자자에게 주는 현실적 조언 (2~3문장)"""
         with st.spinner("🤖 투자 성향 분석 중..."):
-            result=call_gemini(prompt, 700)
+            result=call_gemini(prompt, 2048)
         st.session_state["ai_style_result"]=result
     st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 성향 분석 결과</div>{st.session_state.get("ai_style_result","")}</div>', unsafe_allow_html=True)
 
