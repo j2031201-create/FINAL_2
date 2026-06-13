@@ -161,7 +161,7 @@ def call_gemini(prompt: str, max_tokens: int = 800) -> str:
     api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key:
         return "⚠️ Gemini API 키가 설정되지 않았습니다. Streamlit secrets에 GEMINI_API_KEY를 입력하세요."
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     body = {"contents":[{"parts":[{"text": prompt}]}],
             "generationConfig":{"maxOutputTokens": max_tokens, "temperature": 0.7}}
     try:
