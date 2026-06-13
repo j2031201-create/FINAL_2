@@ -57,6 +57,7 @@ NEWS_POOL = [
     {"head":"🌊 전세사기 여파·빌라 기피","i1":"빌라 -10%","i2":"비아파트 수요 위축","mood":"bad","delta":-0.02,"rate":0,"hp":0,"apt_boost":0,"villa_hit":-0.10},
 ]
 INFLATION = 0.025
+TURN_MAX = 5  # 총 플레이 턴 (테스트 결과 49분→단축)
 
 # 희귀 매물 (낮은 확률 등장 · 금테두리 연출)
 RARE_LISTINGS = [
@@ -119,7 +120,7 @@ def init():
        "life_event":None,         # 인생 이벤트
        "apt_count":0,"rent_count":0,"max_debt":0,  # 투자스타일 분석용
        # NPC 경쟁 시스템
-       "npcs":{}, "npc_comments":{}, "show_ranking":False,
+       "npcs":{}, "npc_comments":{}, "show_ranking":False, "ai_cache":{}, "prev_market":[],
        }
     for k,v in D.items():
         if k not in st.session_state: st.session_state[k]=v
@@ -166,7 +167,7 @@ def img_b64(path):
 
 # ── Gemini API 공통 호출 함수 ──────────────────────────
 def call_gemini(prompt: str, max_tokens: int = 2048) -> str:
-    """Gemini API 호출. 키 없거나 오류 시 안내 메시지 반환 (앱 안 깨짐)"""
+    """Gemini API 호출. 429 시 1회 자동 재시도. 키 없거나 오류 시 안내 (앱 안 깨짐)"""
     api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key:
         return "⚠️ Gemini API 키가 설정되지 않았습니다. Streamlit secrets에 GEMINI_API_KEY를 입력하세요."
@@ -174,17 +175,21 @@ def call_gemini(prompt: str, max_tokens: int = 2048) -> str:
     body = {"contents":[{"parts":[{"text": prompt}]}],
             "generationConfig":{"maxOutputTokens": max_tokens, "temperature": 0.7,
                                 "thinkingConfig":{"thinkingBudget": 0}}}
-    try:
-        r = requests.post(url, json=body, timeout=20)
-        r.raise_for_status()
-        data = r.json()
-        cand = data["candidates"][0]
-        # 응답 텍스트 추출 (parts가 여러 개일 수 있어 합침)
-        parts = cand.get("content",{}).get("parts",[])
-        text = "".join(p.get("text","") for p in parts)
-        return text.strip() if text.strip() else "⚠️ AI 응답이 비어 있습니다. 다시 시도해주세요."
-    except Exception as e:
-        return f"⚠️ AI 응답 오류: {str(e)[:80]}"
+    for attempt in range(2):  # 429면 한 번 더
+        try:
+            r = requests.post(url, json=body, timeout=20)
+            if r.status_code==429 and attempt==0:
+                time.sleep(3); continue
+            r.raise_for_status()
+            cand = r.json()["candidates"][0]
+            parts = cand.get("content",{}).get("parts",[])
+            text = "".join(p.get("text","") for p in parts)
+            return text.strip() if text.strip() else "⚠️ AI 응답이 비어 있습니다. 다시 시도해주세요."
+        except Exception as e:
+            if attempt==0 and "429" in str(e):
+                time.sleep(3); continue
+            return f"⚠️ AI 응답 오류: {str(e)[:80]}"
+    return "⚠️ AI 요청량이 많습니다. 잠시 후 다시 시도해주세요."
 
 def type_thumb(t, h=60):
     """매물 유형별 썸네일 — 이미지 있으면 이미지, 없으면 이모지+색 그라데이션 폴백"""
@@ -285,61 +290,52 @@ def npc_market_update():
         npc["capital"]+=3000+rent-interest
 
 def run_npc_turn():
-    """Gemini 호출 1회로 NPC 3명의 의사결정을 JSON 배열로 받음"""
-    market_str="\n".join(f"- {L['name']} ({L['type']}, {L['tag']}) 호가 {won(L['current'])}, 월세 {L['monthly']}만"
-                         for L in S["market"])
-    npc_state=""
-    for name,npc in S["npcs"].items():
-        owned=", ".join(o["name"] for o in npc["owned"]) or "없음"
-        npc_state+=f"\n[{name}/{NPCS[name]['style']}] 현금 {won(npc['capital'])}, 대출 {won(npc['debt'])}, 보유: {owned}"
-    prompt=f"""당신은 부동산 투자 시뮬레이션 게임의 AI 투자자 3명을 동시에 연기합니다.
-각 투자자는 자신의 성향에 따라 이번 턴 행동을 결정합니다.
-
-[시장 상황] 턴 {S['turn']}/10
-- 뉴스: {S['news']['head']} ({S['news']['i1']}, {S['news']['i2']})
-- 시장 신뢰도: {S['confidence']}/100, 대출이율: {S['loan_rate']:.1f}%
-
-[현재 공개 매물 3개]
-{market_str}
-
-[투자자별 성향과 현황]
-- 박과장(공격형): 레버리지 적극·아파트 선호·상승기대 시 공격매수{npc_state.split(chr(10))[1] if len(npc_state.split(chr(10)))>1 else ''}
-- 김부장(안정형): 현금보유·대출최소·위험회피{npc_state.split(chr(10))[2] if len(npc_state.split(chr(10)))>2 else ''}
-- 이사장(수익형): 오피스텔/상가/빌라 선호·월세 중시{npc_state.split(chr(10))[3] if len(npc_state.split(chr(10)))>3 else ''}
-
-각 투자자의 결정을 아래 JSON 배열로만 답하세요. 다른 텍스트 없이 JSON만:
-[
- {{"name":"박과장","action":"BUY|HOLD|SELL","target":"매물명 또는 빈칸","comment":"한 문장 코멘트"}},
- {{"name":"김부장","action":"BUY|HOLD|SELL","target":"","comment":"한 문장"}},
- {{"name":"이사장","action":"BUY|HOLD|SELL","target":"","comment":"한 문장"}}
-]"""
-    raw=call_gemini(prompt,1500)
+    """룰 기반 NPC 의사결정 (API 호출 없음). 성향별 매물 선택."""
     npc_market_update()
-    try:
-        js=raw[raw.find("["):raw.rfind("]")+1]
-        decisions=json.loads(js)
-    except Exception:
-        decisions=[]
-    # 결정 실행
-    decided={d.get("name"):d for d in decisions} if decisions else {}
-    for name,npc in S["npcs"].items():
-        d=decided.get(name)
-        if not d:
-            S["npc_comments"][name]="(시장을 관망하고 있습니다.)"
-            continue
-        act=d.get("action","HOLD"); tgt=d.get("target","")
-        S["npc_comments"][name]=d.get("comment","")
-        if act=="BUY" and tgt:
-            match=next((L for L in S["market"] if tgt in L["name"] or L["name"] in tgt),None)
-            if match:
-                cost=match["current"]
-                if cost>npc["capital"]:
-                    npc["debt"]+=cost-npc["capital"]; npc["capital"]=0
-                else: npc["capital"]-=cost
-                buy_copy=dict(match); buy_copy["purchase_price"]=cost
+    mood_good = S["news"]["mood"]=="good"
+    for name, npc in S["npcs"].items():
+        style = NPCS[name]["style"]
+        cands = list(S["market"])
+        pick = None; comment = ""
+        if style=="공격형":
+            # 아파트 우선, 상승장이면 공격 매수(대출 OK)
+            apts = [L for L in cands if L["type"]=="아파트"]
+            if apts and (mood_good or npc["capital"]>0):
+                pick = max(apts, key=lambda x:x["current"])
+                comment = "상승장 기대! 아파트를 공격적으로 매수합니다." if mood_good else "장기적으로 아파트가 답이죠."
+            else:
+                comment = "마땅한 아파트가 없어 이번엔 쉽니다."
+        elif style=="안정형":
+            # 현금 충분 + 안전할 때만, 대출 없이 살 수 있는 것만
+            affordable = [L for L in cands if L["current"]<=npc["capital"]]
+            if mood_good and affordable and npc["debt"]==0:
+                pick = min(affordable, key=lambda x:x["current"])
+                comment = "여유 자금으로 안전하게 한 채 담았습니다."
+            else:
+                comment = "시장이 불안정해 현금을 지키겠습니다."
+        else:  # 수익형
+            # 월세수익형(아파트 제외) 중 월세 높은 것
+            rentals = [L for L in cands if L["type"]!="아파트"]
+            if rentals:
+                pick = max(rentals, key=lambda x:x["monthly"])
+                comment = f"월세 {pick['monthly']}만원! 현금흐름 좋은 매물을 확보합니다."
+            else:
+                comment = "수익형 매물이 없어 관망합니다."
+        # 매수 실행
+        if pick:
+            cost = pick["current"]
+            if cost>npc["capital"]:
+                # 공격형만 대출 감수, 나머지는 포기
+                if style=="공격형":
+                    npc["debt"] += cost-npc["capital"]; npc["capital"]=0
+                else:
+                    pick=None; comment="자금이 부족해 이번엔 매수를 보류합니다."
+            else:
+                npc["capital"]-=cost
+            if pick:
+                buy_copy=dict(pick); buy_copy["purchase_price"]=cost
                 npc["owned"].append(buy_copy)
-        elif act=="SELL" and npc["owned"]:
-            sold=npc["owned"].pop(0); npc["capital"]+=sold["current"]
+        S["npc_comments"][name]=comment
 
 def new_turn():
     S["news"]=S["next_news"] or random.choice(NEWS_POOL)
@@ -351,8 +347,8 @@ def new_turn():
     if S["news"]["rate"]: S["loan_rate"]=max(1.0,S["loan_rate"]+S["news"]["rate"])
     if S["news"]["hp"]: S["hp"]=max(0,S["hp"]-S["news"]["hp"])
     scout(S["region"])
-    # NPC 투자자 의사결정 (Gemini 기반) — 키 있을 때만
-    if S["npcs"] and st.secrets.get("GEMINI_API_KEY",""):
+    # NPC 투자자 의사결정 (룰 기반 · API 호출 없음)
+    if S["npcs"]:
         try: run_npc_turn()
         except Exception: pass
     turn_finance()
@@ -431,7 +427,7 @@ def sell(i):
     check_achievements()
 
 def advance():
-    if S["turn"]>=10:
+    if S["turn"]>=TURN_MAX:
         S["phase"]="end"; st.rerun()
     else:
         # 턴 종료 3단계 연출
@@ -594,6 +590,15 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
     display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:8px;
     box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .intro-overlay{padding:0 20px 16px;}
+/* 초간단 게임방법 박스 */
+.quick-guide{background:linear-gradient(135deg,#FF4136,#FF6b5e);border-radius:14px;padding:14px 18px;margin-bottom:12px;box-shadow:0 4px 16px rgba(255,65,54,.3);}
+.qg-title{font-size:17px !important;font-weight:900;color:#fff;margin-bottom:8px;}
+.qg-steps{display:flex;flex-wrap:wrap;gap:8px 18px;}
+.qg-steps span{font-size:14px !important;color:#fff;font-weight:600;}
+.qg-steps b{color:#FFE08a;}
+/* 시장 진행 경고 */
+.turn-warn{background:rgba(255,194,51,.14);border:1px solid #FFC233;border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:13px !important;color:#FFE0a0;line-height:1.5;}
+.appr-help{background:rgba(52,152,219,.1);border:1px solid #3498db;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:12px !important;color:#bdd8f0;line-height:1.7;}
 .intro-manual{background:rgba(16,28,48,.88);border:1.5px solid #FF4136;border-radius:12px;
     padding:12px 18px;backdrop-filter:blur(4px);}
 .intro-manual summary{color:#FF8b7e;font-size:17px !important;font-weight:800;cursor:pointer;list-style:none;}
@@ -639,14 +644,21 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 """, unsafe_allow_html=True)
 
 MANUAL_ITEMS = [
-    ("목표","초기자본으로 10턴(10년) 동안 순자산을 최대한 불리세요. 지역마다 난이도가 다릅니다."),
-    ("시장 원리","아파트는 <b>시세차익형</b>(가격 상승), 오피스텔·상가·빌라는 <b>월세수익형</b>입니다. 뉴스가 큰 변수예요!"),
-    ("매물 스카우팅","매 턴 무작위 3개 매물만 공개됩니다. 호가와 적정가치를 비교하세요."),
-    ("감정평가 퀴즈","평가법 정의를 읽고 이름을 맞히면 <b>영구 해금</b>. 유형에 맞는 평가법을 쓰세요 (원가법은 시장가 반영이 약함!)."),
-    ("영끌(대출)","자본이 부족해도 매수 가능. 단, 이자가 소득+월세를 넘으면 멘탈(HP)이 깎여 0이면 파산!"),
-    ("시장 예측","우측 '다음 턴 예고'를 보고 전략적으로 매수/매도하세요."),
-    ("실질 수익","종료 후 대출이자와 인플레이션을 뺀 '진짜 수익'으로 평가됩니다."),
+    ("목표","5번의 기회(턴) 동안 돈을 가장 많이 불리면 승리! 1턴은 1년이에요."),
+    ("① 매물 비교","매 턴 부동산 3개가 나와요. 아파트는 <b>값이 오르는 형</b>, 오피스텔·상가·빌라는 <b>월세 버는 형</b>이에요."),
+    ("② 감정평가로 진짜 가치 확인","매물을 고르면 '진짜 값'을 계산해줘요. 호가(파는 값)보다 진짜 값이 높으면 <b>이득(저평가)</b>!"),
+    ("③ 구매하기","매물 선택 → 진짜 값 확인 → 아래 <b>💰 매수</b> 버튼! 한 턴에 여러 개 살 수 있어요."),
+    ("④ 시장 진행","<b>시장 진행</b>을 누르면 1년이 지나고 <b>새 매물 3개</b>로 바뀌어요. (이전 매물은 사라져요!) 가끔 결혼·승진 같은 인생 이벤트도 생겨요."),
+    ("🌟 희귀 투자 기회","금색 테두리 매물은 개발 호재가 있는 <b>특별한 기회</b>예요! 보통 저평가라 사두면 이득일 때가 많아요."),
+    ("⚠️ 영끌 주의","돈이 부족해도 대출로 살 수 있지만, 이자가 너무 크면 멘탈(HP)이 깎이고 0이 되면 <b>파산</b>해요!"),
 ]
+
+# 감정평가법 쉬운 설명 (툴팁용)
+APPRAISAL_EASY = {
+    "수익환원법":"💰 수익환원법 → 월세 수익으로 값을 매겨요 (오피스텔·상가에 적합)",
+    "거래사례비교법":"📊 거래사례비교법 → 주변 비슷한 거래로 값을 매겨요 (아파트에 적합)",
+    "원가법":"🏗 원가법 → 건축비로 값을 매겨요 (시세 반영이 약해 참고용)",
+}
 
 def render_manual_popup():
     half1="".join(f'<div class="manual-item"><span class="num">{i+1}</span><span><b>{t}</b> — {d}</span></div>'
@@ -680,6 +692,17 @@ if S["phase"]=="intro":
           <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
           <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
         </div>{manual_html}""", unsafe_allow_html=True)
+
+    # 🎮 초간단 설명 (항상 노출 · 중학생도 1분 이해)
+    st.markdown('''<div class="quick-guide">
+      <div class="qg-title">🎮 게임 방법 (30초 요약)</div>
+      <div class="qg-steps">
+        <span><b>1.</b> 매물 3개 비교</span>
+        <span><b>2.</b> 좋은 매물 구매 💰</span>
+        <span><b>3.</b> 시장 진행 → 새 매물</span>
+        <span><b>4.</b> 5턴 동안 돈 가장 많이 불리면 승리 🏆</span>
+      </div>
+    </div>''', unsafe_allow_html=True)
 
     # 지역 선택 버튼
     cols=st.columns(3)
@@ -721,10 +744,16 @@ elif S["phase"]=="play":
             <div class="popup-info"><span style="color:{acc};">▸</span> {n['i2']}</div>
           </div>
         </div>""", unsafe_allow_html=True)
-        # 인생 이벤트도 같이 알림
+        # 인생 이벤트도 같이 알림 (무엇이 바뀌었는지 명확히)
         if S["life_event"]:
             ev=S["life_event"]
-            st.markdown(f"""<div class="life-toast">{ev['icon']} <b>인생 이벤트: {ev['name']}</b> — {ev['effect']}</div>""", unsafe_allow_html=True)
+            cap_txt = f"자본 {'+' if ev['cap']>=0 else ''}{won(abs(ev['cap'])) if ev['cap']>=0 else '-'+won(abs(ev['cap']))}" if ev['cap'] else ""
+            cap_txt = f"자본 {'+' if ev['cap']>=0 else '−'}{won(abs(ev['cap']))}" if ev['cap'] else ""
+            hp_txt = f"멘탈(HP) {'+' if ev['hp']>=0 else '−'}{abs(ev['hp'])}" if ev['hp'] else ""
+            changes = " · ".join(x for x in [cap_txt, hp_txt] if x)
+            st.markdown(f"""<div class="life-toast">{ev['icon']} <b>인생 이벤트: {ev['name']}</b><br>
+              <span style="font-size:13px;">{ev['effect']}</span><br>
+              <span style="font-size:14px;font-weight:800;color:#fff;">변화: {changes}</span></div>""", unsafe_allow_html=True)
         c1,c2,c3=st.columns([1,1,1])
         with c2:
             if st.button("✅ 확인하고 시작", use_container_width=True, key="news_ok"):
@@ -784,7 +813,7 @@ elif S["phase"]=="play":
               <span class="rank-nw">{won(nw)}</span>
               <span class="rank-rate" style="color:{'#2ecc71' if rate>=0 else '#FF6347'};">{rate:+.1f}%</span>
             </div>"""
-        st.markdown(f'<div class="rank-board"><div class="rank-title">🏆 AI 투자 리그 · 실시간 순위 (턴 {S["turn"]}/10)</div>{rows}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rank-board"><div class="rank-title">🏆 AI 투자 리그 · 실시간 순위 (턴 {S["turn"]}/{TURN_MAX})</div>{rows}</div>', unsafe_allow_html=True)
         # NPC 코멘트
         if S["npc_comments"]:
             cmts=""
@@ -804,7 +833,7 @@ elif S["phase"]=="play":
       <div class="stat-card"><div class="sl">멘탈</div><div class="sv {hpc}">{S['hp']}</div></div>
       <div class="stat-card"><div class="sl">월세수입</div><div class="sv">{won(rent)}</div></div>
       <div class="stat-card"><div class="sl">보유</div><div class="sv">{len(S['owned'])}건</div></div>
-      <div class="stat-card"><div class="sl">턴</div><div class="sv">{S['turn']}/10</div></div>
+      <div class="stat-card"><div class="sl">턴</div><div class="sv">{S['turn']}/{TURN_MAX}</div></div>
     </div></div>""", unsafe_allow_html=True)
 
     left,right=st.columns([1.15,0.85],gap="large")
@@ -849,7 +878,7 @@ elif S["phase"]=="play":
             def stars(n): return "★"*n+"☆"*(5-n)
             card_cls="game-card rare" if rare else "game-card"
             if sel: card_cls+=" sel"
-            rare_tag='<span class="rare-badge">RARE</span>' if rare else ""
+            rare_tag='<span class="rare-badge">🌟 희귀 투자 기회</span>' if rare else ""
             st.markdown(f"""<div class="{card_cls}">
               <div class="gc-thumb">{type_thumb(L['type'],72)}</div>
               <div class="gc-body">
@@ -871,7 +900,12 @@ elif S["phase"]=="play":
             st.markdown(f'<div style="font-size:15px;color:#bdd0e8;margin-bottom:8px;">선택: <b style="color:#fff;">{L["name"]}</b> ({L["tag"]}) · 호가 {won(L["current"])}</div>', unsafe_allow_html=True)
 
             if S["appraised"] is None:
-                st.caption(f"해금된 도구: {', '.join(S['unlocked']) if S['unlocked'] else '없음 (퀴즈로 해금)'}")
+                st.caption("✓ = 사용 가능 · 🔒 = 잠김(퀴즈 맞히면 영구 해금)")
+                st.markdown('''<div class="appr-help">
+                  💰 <b>수익환원법</b> → 월세 수익으로 평가 (오피스텔·상가에 딱)<br>
+                  📊 <b>거래사례비교법</b> → 주변 시세로 평가 (아파트에 딱)<br>
+                  🏗 <b>원가법</b> → 건축비로 평가 (참고용, 시세 반영 약함)
+                </div>''', unsafe_allow_html=True)
                 ac=st.columns(3)
                 for i,(m,info) in enumerate(APPRAISAL.items()):
                     with ac[i]:
@@ -929,6 +963,7 @@ elif S["phase"]=="play":
         # 인벤토리
         st.markdown('<div class="ptitle" style="margin-top:14px;">🏦 보유 매물 (인벤토리)</div>', unsafe_allow_html=True)
         if S["owned"]:
+            st.caption("🟢 상승세 = 산 값보다 올랐어요 · 🟡 정체 = 거의 그대로 · 🔴 하락세 = 산 값보다 떨어졌어요")
             for i,L in enumerate(S["owned"]):
                 p=L["current"]-L["purchase_price"]
                 rate=round(p/L["purchase_price"]*100,1) if L["purchase_price"] else 0
@@ -950,7 +985,8 @@ elif S["phase"]=="play":
         st.markdown('</div>', unsafe_allow_html=True)  # bright-bg 닫기
 
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("⏭️ 다음 턴으로 진행", use_container_width=True): advance()
+        st.markdown('''<div class="turn-warn">⚠️ <b>시장 진행</b> 시 1년이 지나고, 현재 매물 3개는 사라지고 <b>새 매물</b>이 나옵니다.<br>사고 싶은 매물은 진행 전에 먼저 구매하세요!</div>''', unsafe_allow_html=True)
+        if st.button(f"📅 시장 진행 ({S['turn']}년 → {S['turn']+1 if S['turn']<TURN_MAX else S['turn']}년)", use_container_width=True): advance()
 
     with right:
         st.markdown('<div class="ptitle">📊 시장 디스플레이</div>', unsafe_allow_html=True)
@@ -969,63 +1005,45 @@ elif S["phase"]=="play":
                 else: lc="#9fb4d0"
                 st.markdown(f'<div class="log-card" style="border-left:3px solid {lc};">{e}</div>', unsafe_allow_html=True)
 
-        # ── AI 기능 패널 ──
-        st.markdown('<div class="ptitle" style="margin-top:14px;">🤖 AI 어시스턴트</div>', unsafe_allow_html=True)
+        # ── AI 기능 패널 (통합 + 캐싱으로 429 방지) ──
+        st.markdown('<div class="ptitle" style="margin-top:14px;">🤖 AI 투자 분석</div>', unsafe_allow_html=True)
+        sel_obj = next((x for x in S["market"] if x["id"]==S["selected"]), None)
+        st.caption("선택한 매물 + 현재 시장을 종합 분석합니다 (매수·보류·주의 판단)" if sel_obj
+                   else "왼쪽에서 매물을 먼저 선택하면, 그 매물까지 함께 분석합니다.")
 
-        # 1) AI 투자 코치
-        if st.button("🤖 AI 투자 코치", use_container_width=True, key="ai_coach"):
+        if st.button("🤖 AI 투자 분석 실행", use_container_width=True, key="ai_analyze"):
             total_asset=S["capital"]+sum(L["current"] for L in S["owned"])
             owned_str="\n".join(f"- {L['name']}({L['type']}) 현재가 {won(L['current'])}" for L in S["owned"]) or "없음"
             news_str=S["news"]["head"] if S["news"] else "없음"
             next_str=S["next_news"]["head"] if S["next_news"] else "없음"
-            prompt=f"""당신은 한국 부동산 투자 전문가 코치입니다. 다음 상황을 분석하고 투자 전략을 조언해주세요.
+            # 캐시 키: 턴 + 선택매물 (같은 상황 재호출 방지)
+            cache_key=f"ai_{S['turn']}_{S['selected']}"
+            sel_block = (f"\n[선택한 매물]\n- {sel_obj['name']} ({sel_obj['type']}/{sel_obj['tag']}), "
+                         f"호가 {won(sel_obj['current'])}, 월세 {sel_obj['monthly']}만, {sel_obj['area']}㎡" ) if sel_obj else "\n[선택한 매물] 없음 (시장 전체 관점에서 조언)"
+            if cache_key in S.get("ai_cache",{}):
+                result = S["ai_cache"][cache_key]
+            else:
+                prompt=f"""당신은 한국 부동산 투자 전문가입니다. 게임 플레이어에게 조언하세요.
 
-[현재 게임 상황]
-- 턴: {S['turn']}/10 (1턴=1년)
-- 보유 현금: {won(S['capital'])}
-- 총 자산: {won(total_asset)}
-- 대출 잔액: {won(S['debt'])} (연이율 {S['loan_rate']:.1f}%)
-- 멘탈(HP): {S['hp']}/100
-- 시장 신뢰도: {S['confidence']}/100
-- 보유 매물:
-{owned_str}
-- 이번 턴 뉴스: {news_str}
-- 다음 턴 예상: {next_str}
+[현재 상황] 턴 {S['turn']}/{TURN_MAX} · 현금 {won(S['capital'])} · 총자산 {won(total_asset)} · 대출 {won(S['debt'])}(이율 {S['loan_rate']:.1f}%) · 시장신뢰도 {S['confidence']}/100
+[뉴스] 이번턴: {news_str} / 다음턴 예상: {next_str}
+[보유매물]
+{owned_str}{sel_block}
 
-다음 4가지를 간결하게 한국어로 답해주세요:
-1. 현재 시장 상황 분석 (2~3문장)
-2. 추천 투자 전략 (2~3문장)
-3. 위험도: 상/중/하 + 이유 한 줄
-4. 추천 행동: 매수 / 관망 / 매도 중 하나 + 이유 한 줄"""
-            with st.spinner("🤖 AI 분석 중..."):
-                result = call_gemini(prompt, 2048)
-            st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 코치</div>{result}</div>', unsafe_allow_html=True)
-
-        # 2) AI 감정평가사 (매물 선택된 경우만)
-        if S["selected"] and any(x["id"]==S["selected"] for x in S["market"]):
-            L_sel=next(x for x in S["market"] if x["id"]==S["selected"])
-            if st.button("🤖 AI 감정평가 의견", use_container_width=True, key="ai_appraise"):
-                news_str=S["news"]["head"] if S["news"] else "없음"
-                prompt=f"""당신은 한국 부동산 감정평가 전문가입니다. 다음 매물을 분석해주세요.
-
-[매물 정보]
-- 매물명: {L_sel['name']}
-- 유형: {L_sel['type']} ({L_sel['tag']})
-- 면적: {L_sel['area']}㎡
-- 호가: {won(L_sel['current'])}
-- 월세: {L_sel['monthly']}만원 (보증금 {won(L_sel['deposit'])})
-- 지역: {S['region']} ({REGIONS[S['region']]['level']})
-- 현재 시장: {news_str}
-- 시장 신뢰도: {S['confidence']}/100
-
-다음 4가지를 간결하게 한국어로 답해주세요:
-1. 적정성 평가: 호가가 적정한지 판단 (2문장)
-2. 고평가/저평가 여부: 명확히 판단 + 근거 한 줄
-3. 투자 적합도: 이 매물 유형({L_sel['type']})의 수익 원천 설명 (2문장)
-4. 종합 의견: 매수 추천 여부 한 줄"""
-                with st.spinner("🤖 감정평가 분석 중..."):
+아래 형식으로 간결하게 한국어로 답하세요:
+■ 투자 등급: (매수 추천 / 보류 / 주의) 중 하나
+■ 추천 이유: 2문장
+■ 위험 요인: 1~2가지
+■ 한줄 총평: 한 문장"""
+                with st.spinner("🤖 AI가 분석 중입니다..."):
                     result = call_gemini(prompt, 2048)
-                st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 감정평가사</div>{result}</div>', unsafe_allow_html=True)
+                if "ai_cache" not in S: S["ai_cache"]={}
+                # 오류(429 등)는 캐시 안 함 → 다음에 재시도 가능
+                if not result.startswith("⚠️"):
+                    S["ai_cache"][cache_key]=result
+            st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 분석</div>{result}</div>', unsafe_allow_html=True)
+            if result.startswith("⚠️"):
+                st.caption("⏳ AI 요청이 잠시 몰렸어요. 10~20초 후 다시 눌러주세요. (무료 AI 사용량 제한)")
 
 # ─────────────────────────────────────────────────────
 # 화면 C: 결산 리포트
@@ -1041,7 +1059,7 @@ elif S["phase"]=="end":
     assets=S["capital"]+sum(L["current"] for L in S["owned"])
     net_worth=assets-S["debt"]
     start=REGIONS[S["region"]]["capital"]
-    inflation_adj=int(start*((1+INFLATION)**10-1))
+    inflation_adj=int(start*((1+INFLATION)**TURN_MAX-1))
     nominal=net_worth-start
     real=nominal-S["total_interest"]-inflation_adj
     rate=real/start*100
@@ -1125,49 +1143,32 @@ elif S["phase"]=="end":
             </div>"""
         st.markdown(f'<div class="rank-board">{rows}</div>', unsafe_allow_html=True)
 
-        # Gemini 승패 분석
-        if "ai_league_analysis" not in st.session_state:
+        # 결산 AI 분석 (리그 승패 + 투자 성향을 한 번에 호출 → API 절약)
+        if "ai_end_analysis" not in st.session_state:
             player_rank=next(i for i,(_,_,k,_) in enumerate(board) if k=="나")+1
             board_str="\n".join(f"{i+1}위 {lbl} 순자산 {won(nw)} 수익률 {(nw-start)/start*100:+.1f}%" for i,(lbl,nw,k,s) in enumerate(board))
-            prompt=f"""부동산 투자 시뮬레이션 게임이 끝났습니다. 플레이어와 AI 투자자 3명의 최종 성적입니다.
+            nw_end=player_nw
+            prompt=f"""부동산 투자 시뮬레이션 게임({TURN_MAX}턴)이 끝났습니다. 아래 결과를 분석해주세요.
 
 [최종 순위]
 {board_str}
-
 플레이어는 {player_rank}위입니다.
-플레이어와 AI 투자자들의 전략을 비교하여, 플레이어가 왜 이 순위가 되었는지(승리 또는 패배 요인) 5줄 내외로 한국어로 분석해주세요. 구체적인 투자 행동 차이를 근거로 설명하세요."""
-            with st.spinner("🤖 투자 리그 분석 중..."):
-                st.session_state["ai_league_analysis"]=call_gemini(prompt,1500)
-        st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 리그 분석 — 승패 요인</div>{st.session_state.get("ai_league_analysis","")}</div>', unsafe_allow_html=True)
-
-    # AI 투자 성향 분석 (게임 종료 시 자동 생성)
-    st.markdown('<div class="ptitle" style="margin-top:16px;">🤖 AI 투자 성향 분석</div>', unsafe_allow_html=True)
-    if "ai_style_result" not in st.session_state:
-        log_str="\n".join(S["log"][-10:]) or "없음"
-        assets_end=S["capital"]+sum(L["current"] for L in S["owned"])
-        nw_end=assets_end-S["debt"]
-        prompt=f"""당신은 한국 부동산 투자 행동 분석 전문가입니다. 플레이어의 10턴 투자 행동을 분석해주세요.
 
 [플레이어 투자 기록]
-- 지역: {S['region']} ({REGIONS[S['region']]['level']})
-- 총 매수 횟수: {S['buy_count']}회
-- 아파트 매수: {S['apt_count']}건 / 수익형 매수: {S['rent_count']}건
-- 최대 대출 규모: {won(S['max_debt'])}
-- 최종 순자산: {won(nw_end)}
-- 연속 수익: {S['win_streak']}회
+- 총 매수 {S['buy_count']}회 (아파트 {S['apt_count']} / 수익형 {S['rent_count']})
+- 최대 대출 {won(S['max_debt'])}, 최종 순자산 {won(nw_end)}
 - 획득 업적: {', '.join(S['achievements']) if S['achievements'] else '없음'}
-- 거래 기록:
-{log_str}
 
-다음 4가지를 한국어로 분석해주세요:
-1. 투자 성향 유형: 공격형/보수형/레버리지형/가치투자형/임대사업형 중 하나 + 이유 (2문장)
-2. 강점: 이 플레이어가 잘한 점 (2문장)
-3. 개선점: 다음 게임에서 보완할 점 (2문장)
-4. 실제 투자 조언: 이 성향의 투자자에게 주는 현실적 조언 (2~3문장)"""
-        with st.spinner("🤖 투자 성향 분석 중..."):
-            result=call_gemini(prompt, 2048)
-        st.session_state["ai_style_result"]=result
-    st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 투자 성향 분석 결과</div>{st.session_state.get("ai_style_result","")}</div>', unsafe_allow_html=True)
+아래 두 부분으로 한국어로 답하세요:
+
+【승패 요인】 플레이어가 왜 {player_rank}위가 되었는지 AI 투자자들과 비교해 4줄 내외로.
+【투자 성향】 플레이어 성향(공격형/보수형/레버리지형/가치투자형/임대사업형 중 하나)과 강점·개선점을 3줄 내외로."""
+            with st.spinner("🤖 게임 결과 분석 중..."):
+                st.session_state["ai_end_analysis"]=call_gemini(prompt,2048)
+        _end_ai = st.session_state.get("ai_end_analysis","")
+        st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 게임 분석 — 승패 요인 & 투자 성향</div>{_end_ai}</div>', unsafe_allow_html=True)
+        if _end_ai.startswith("⚠️"):
+            st.caption("⏳ AI 요청이 몰렸어요. 페이지를 새로고침하면 다시 시도합니다.")
 
     # 투자 스타일 분석 (rule-based)
     if S["apt_count"]>S["rent_count"]: style,sdesc="📈 가치투자자","아파트 시세차익 중심으로 투자했습니다"
