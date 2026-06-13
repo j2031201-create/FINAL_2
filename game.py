@@ -124,7 +124,7 @@ def init():
     D={"phase":"intro","region":None,"capital":100000,"debt":0,"loan_rate":5.0,
        "deposit_total":0,"turn":1,"income_year":3000,"market":[],"owned":[],
        "my_method":None,"news":None,"next_news":None,"selected":None,"quiz":None,
-       "appraised":None,"appraisal_steps":[],"log":[],
+       "appraised":None,"log":[],
        "total_interest":0,"game_over":False,"show_manual":False,"_report_shown":False,
        # 신규 시스템
        "news_popup":False,        # 턴 시작 뉴스 팝업 대기
@@ -376,7 +376,7 @@ def new_turn():
     S["max_debt"]=max(S["max_debt"],S["debt"])
     check_achievements()
     S["news_popup"]=True  # 턴 시작 뉴스 팝업
-    S["selected"]=None; S["quiz"]=None; S["appraised"]=None; S["appraisal_steps"]=[]
+    S["selected"]=None; S["quiz"]=None; S["appraised"]=None
 
 def do_appraise(method,L):
     cap=round(random.uniform(0.04,0.065),3)
@@ -542,6 +542,11 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .pred-head{font-size:16px !important;font-weight:800;color:#FFC233;margin-bottom:8px;}
 .pred-row{display:flex;justify-content:space-between;font-size:15px !important;color:#dce6f2;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08);}
 .pred-row:last-child{border-bottom:none;}
+.pred-block{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.pred-block:last-child{border-bottom:none;}
+.pb-label{font-size:13px !important;color:#bda8d8;font-weight:700;margin-bottom:3px;}
+.pb-main{font-size:15px !important;font-weight:800;color:#fff;}
+.pb-desc{font-size:13px !important;color:#cfe0f2;margin-top:2px;line-height:1.4;}
 /* 매물 게임 카드 */
 .game-card{background:#2d4a6b;border:1.5px solid #3a5a80;border-radius:14px;padding:12px;margin-bottom:6px;display:flex;gap:14px;align-items:flex-start;transition:.15s;}
 .game-card.sel{border-color:#FF4136;background:#34557a;box-shadow:0 0 0 2px rgba(255,65,54,.35),0 4px 16px rgba(0,0,0,.3);transform:scale(1.01);}
@@ -939,24 +944,47 @@ elif S["phase"]=="play":
               <div class="news-info">📌 {S['news']['i1']} · {S['news']['i2']}</div>
               <div class="news-impact">💡 {S['news'].get('impact','')}</div></div>""", unsafe_allow_html=True)
 
-        # 2) 내년 시장 예측 카드
+        # 2) 내년 시장 예측 카드 (사용자 친화적)
         if S["next_news"]:
             nn=S["next_news"]
             next_year=START_YEAR+S["turn"]
             is_good=nn["mood"]=="good"
-            mood_txt="오를 듯 ▲" if is_good else "내릴 듯 ▼"
-            mood_col="#2ecc71" if is_good else "#FF4136"
-            risk = 2 if is_good else 4
-            risk_stars="★"*risk+"☆"*(5-risk)
-            strat="적극 매수 기회!" if is_good else "현금 아끼고 관망"
-            ev_short=nn['head'].split(' ',1)[1] if ' ' in nn['head'] else nn['head']
+            # 시장 분위기 (쉬운 문장)
+            if is_good:
+                mood_line="📈 내년에 부동산 가격 상승 예상"; mood_col="#2ecc71"
+                advice_t="올해 매수 추천"; advice_d="가격 오르기 전에 미리 사두는 게 유리할 수 있어요."
+            else:
+                mood_line="📉 내년에 부동산 가격 하락 예상"; mood_col="#FF4136"
+                advice_t="올해는 관망 추천"; advice_d="내년에 더 싸고 좋은 매물이 나올 수 있어요."
+            # AI 예측 신뢰도 (위험도 대신) — 턴마다 안정적
+            conf_lv = 4 if is_good else 3
+            conf_stars="★"*conf_lv+"☆"*(5-conf_lv)
+            conf_txt="AI가 비교적 높은 확률로 예측하고 있어요." if conf_lv>=4 else "AI 예측이지만 빗나갈 수도 있어요."
+            # 예상 이슈 = 다음 뉴스 제목 + 영향
+            issue=nn['head'].split(' ',1)[1] if ' ' in nn['head'] else nn['head']
+            issue_effect=nn.get('impact','')
             st.markdown(f"""<div class="predict-card">
-              <div class="pred-head">🔮 {next_year}년 시장 예측 AI 리포트</div>
-              <div class="pred-sub">AI가 내년 부동산 시장을 예측했어요. (실제와 다를 수 있어요)</div>
-              <div class="pred-row"><span>시장 분위기</span><span style="color:{mood_col};font-weight:800;">{mood_txt}</span></div>
-              <div class="pred-row"><span>위험도</span><span style="color:#FFC233;">{risk_stars}</span></div>
-              <div class="pred-row"><span>예상 뉴스</span><span>{ev_short}</span></div>
-              <div class="pred-row"><span>추천 행동</span><span style="color:{mood_col};font-weight:700;">{strat}</span></div>
+              <div class="pred-head">🔮 {next_year}년 부동산 시장 예측 AI 리포트</div>
+              <div class="pred-sub">AI가 내년 시장을 분석했어요. (실제 결과와 다를 수 있어요)</div>
+              <div class="pred-block">
+                <div class="pb-label">🏘️ 부동산 시장 분위기</div>
+                <div class="pb-main" style="color:{mood_col};">{mood_line}</div>
+              </div>
+              <div class="pred-block">
+                <div class="pb-label">🎯 AI 예측 신뢰도</div>
+                <div class="pb-main" style="color:#FFC233;">{conf_stars}</div>
+                <div class="pb-desc">{conf_txt}</div>
+              </div>
+              <div class="pred-block">
+                <div class="pb-label">📌 내년도 예상 이슈</div>
+                <div class="pb-main">{issue}</div>
+                <div class="pb-desc">{issue_effect}</div>
+              </div>
+              <div class="pred-block">
+                <div class="pb-label">💡 AI 추천 행동</div>
+                <div class="pb-main" style="color:{mood_col};">{advice_t}</div>
+                <div class="pb-desc">{advice_d}</div>
+              </div>
             </div>""", unsafe_allow_html=True)
 
         # 3) 이번 턴 매물 (게임 카드 · 구매 버튼 직결)
@@ -1053,11 +1081,12 @@ elif S["phase"]=="play":
     with right:
         st.markdown('<div class="ptitle">📊 시장 디스플레이</div>', unsafe_allow_html=True)
         total_asset=S["capital"]+sum(L["current"] for L in S["owned"])
+        my_w = APPRAISAL[S["my_method"]]["weapon"] if S.get("my_method") else "미선택"
         st.markdown(f"""<div class="display">
           <div class="disp-item"><span class="disp-label">총 자산</span><br>{won(total_asset)}</div>
           <div class="disp-item"><span class="disp-label">순자산 (자산-부채)</span><br>{won(total_asset-S['debt'])}</div>
           <div class="disp-item"><span class="disp-label">누적 대출이자</span><br>{won(S['total_interest'])}</div>
-          <div class="disp-item"><span class="disp-label">해금 감정평가</span><br>{', '.join(S['unlocked']) if S['unlocked'] else '없음'}</div>
+          <div class="disp-item"><span class="disp-label">내 투자 무기</span><br>{my_w}</div>
         </div>""", unsafe_allow_html=True)
         if S["log"]:
             st.markdown('<div class="ptitle" style="margin-top:12px;">📜 거래 기록</div>', unsafe_allow_html=True)
