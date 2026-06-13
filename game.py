@@ -136,6 +136,7 @@ def init():
        "apt_count":0,"rent_count":0,"max_debt":0,  # 투자스타일 분석용
        # NPC 경쟁 시스템
        "npcs":{}, "npc_comments":{}, "show_ranking":False, "ai_cache":{}, "prev_market":[],
+       "networth_history":[],  # 연도별 순자산 추이 [(연도, 순자산), ...]
        }
     for k,v in D.items():
         if k not in st.session_state: st.session_state[k]=v
@@ -374,6 +375,10 @@ def new_turn():
         S["life_event"]=ev
         S["log"].append(f"{START_YEAR+S['turn']-1}년: {ev['icon']} {ev['name']}")
     S["max_debt"]=max(S["max_debt"],S["debt"])
+    # 연도별 순자산 추이 기록 (그래프용)
+    cur_year=START_YEAR+S["turn"]-1
+    nw_now=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+    S["networth_history"]=[h for h in S["networth_history"] if h[0]!=cur_year]+[(cur_year, nw_now)]
     check_achievements()
     S["news_popup"]=True  # 턴 시작 뉴스 팝업
     S["selected"]=None; S["quiz"]=None; S["appraised"]=None
@@ -588,6 +593,7 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .inv-loss{background:rgba(255,99,72,.12);border:1px solid #FF6347;}
 .empty-box{background:#2d4a6b;border:1px dashed #4a6a90;border-radius:12px;padding:18px;text-align:center;font-size:15px !important;color:#9fb4d0;line-height:1.7;}
 .log-card{background:#28456680;border-radius:8px;padding:7px 10px;margin-bottom:5px;font-size:14px !important;color:#cfe0f2;}
+.graph-cap{text-align:center;font-size:15px !important;font-weight:700;margin-top:10px;}
 .li-name{font-size:15px !important;font-weight:700;color:#fff;}
 .li-tag{font-size:13px !important;font-weight:700;padding:1px 8px;border-radius:100px;margin-left:6px;}
 .tag-cap{background:rgba(52,152,219,.25);color:#5dade2;}
@@ -1278,6 +1284,50 @@ elif S["phase"]=="end":
     if S["achievements"]:
         badges="".join(f'<span class="ach-badge">{ACHIEVEMENTS[k][0]}</span>' for k in S["achievements"])
         st.markdown(f'<div class="ptitle" style="margin-top:14px;">🏆 획득 업적 ({len(S["achievements"])}개)</div><div class="ach-badges">{badges}</div>', unsafe_allow_html=True)
+
+    # ── 연도별 자산 추이 그래프 ──
+    # 최종 시점(현재 연도) 순자산도 반영
+    final_year=START_YEAR+S["turn"]-1
+    final_nw=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+    hist=[h for h in S["networth_history"] if h[0]!=final_year]+[(final_year, final_nw)]
+    hist=sorted(hist, key=lambda x:x[0])
+    if len(hist)>=2:
+        st.markdown('<div class="ptitle" style="margin-top:16px;">📈 연도별 순자산 추이</div>', unsafe_allow_html=True)
+        W,H,PAD=560,220,46
+        ys=[nw for _,nw in hist]; xs=[y for y,_ in hist]
+        ymin,ymax=min(ys),max(ys)
+        if ymax==ymin: ymax=ymin+1
+        def px(i): return PAD+(W-2*PAD)*i/(len(hist)-1)
+        def py(v): return H-PAD-(H-2*PAD)*(v-ymin)/(ymax-ymin)
+        # 시작자본 기준선
+        start_cap=REGIONS[S["region"]]["capital"]
+        pts=" ".join(f"{px(i):.0f},{py(v):.0f}" for i,(yr,v) in enumerate(hist))
+        # 면적 채우기 경로
+        area=f"M {px(0):.0f},{H-PAD} " + " ".join(f"L {px(i):.0f},{py(v):.0f}" for i,(yr,v) in enumerate(hist)) + f" L {px(len(hist)-1):.0f},{H-PAD} Z"
+        dots=""; labels=""
+        for i,(yr,v) in enumerate(hist):
+            up = v>=start_cap
+            dots+=f'<circle cx="{px(i):.0f}" cy="{py(v):.0f}" r="4.5" fill="{"#2ecc71" if up else "#FF6347"}" stroke="#fff" stroke-width="1.5"/>'
+            labels+=f'<text x="{px(i):.0f}" y="{py(v)-12:.0f}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">{won(v)}</text>'
+            labels+=f'<text x="{px(i):.0f}" y="{H-PAD+20:.0f}" text-anchor="middle" font-size="12" fill="#9fb4d0">{yr}년</text>'
+        base_y=py(start_cap)
+        svg=f'''<svg viewBox="0 0 {W} {H}" width="100%" style="background:#16273f;border-radius:14px;border:1px solid #2a4565;">
+          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1B64DA" stop-opacity="0.4"/><stop offset="100%" stop-color="#1B64DA" stop-opacity="0"/>
+          </linearGradient></defs>
+          <line x1="{PAD}" y1="{base_y:.0f}" x2="{W-PAD}" y2="{base_y:.0f}" stroke="#FFC233" stroke-width="1" stroke-dasharray="5,4" opacity="0.6"/>
+          <text x="{W-PAD}" y="{base_y-6:.0f}" text-anchor="end" font-size="11" fill="#FFC233">시작자본 {won(start_cap)}</text>
+          <path d="{area}" fill="url(#g)"/>
+          <polyline points="{pts}" fill="none" stroke="#3498db" stroke-width="3" stroke-linejoin="round"/>
+          {dots}{labels}
+        </svg>'''
+        st.markdown(svg, unsafe_allow_html=True)
+        # 한줄 요약
+        change=final_nw-start_cap
+        if change>=0:
+            st.markdown(f'<div class="graph-cap" style="color:#2ecc71;">📈 {len(hist)}년 동안 순자산이 <b>{won(abs(change))}</b> 늘었어요!</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="graph-cap" style="color:#FF6347;">📉 {len(hist)}년 동안 순자산이 <b>{won(abs(change))}</b> 줄었어요.</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ptitle" style="margin-top:14px;">📜 전체 거래 기록</div>', unsafe_allow_html=True)
     for e in S["log"]: st.markdown(f'<div class="log-card">{e}</div>', unsafe_allow_html=True)
