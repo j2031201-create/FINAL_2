@@ -458,9 +458,8 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .g-title{font-size:22px !important;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
 .g-sub{font-size:13px !important;color:#9fb4d0;margin-bottom:12px;}
 
-/* 밝은 하늘색 배경 컨테이너 (제목~보유매물) - 시장 디스플레이와 확연히 구분 */
-.bright-bg{background:linear-gradient(160deg,#3d6fa5 0%,#4a7fb8 100%);
-    border:1px solid #6a9fd0;border-radius:18px;padding:18px;margin-bottom:14px;}
+/* 밝은 하늘색 배경 컨테이너 - 빈 div 렌더 방지 (높이 0) */
+.bright-bg{display:none;}
 
 .panel{background:#28456680;border:1px solid #3a5a80;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
 .panel-red{background:#284566;border:1px solid #FF4136;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
@@ -591,9 +590,14 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .manual-item .num{color:#FF6b5e;font-weight:800;flex:0 0 22px;}
 
 .intro-hero{text-align:center;padding:30px 0 10px;}
-.intro-stage{width:100%;min-height:440px;border-radius:18px;overflow:hidden;
+.intro-stage{width:100%;min-height:660px;border-radius:18px;overflow:hidden;
     display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:10px;
     box-shadow:0 8px 32px rgba(0,0,0,.4);}
+/* Hero Section: 화면 높이의 60%, 이미지 원본 비율 유지 */
+.hero-section{width:100%;height:60vh;min-height:380px;display:flex;align-items:center;justify-content:center;
+    margin-bottom:14px;border-radius:18px;overflow:hidden;
+    background:radial-gradient(circle at center,#1a2e4a,#0f2238);box-shadow:0 8px 32px rgba(0,0,0,.45);}
+.hero-img{max-width:100%;max-height:100%;object-fit:contain;display:block;}
 .intro-overlay{padding:0 22px 22px;}
 .intro-manual{background:rgba(16,28,48,.82);border:1.5px solid #FF4136;border-radius:14px;
     padding:16px 20px;backdrop-filter:blur(4px);}
@@ -668,18 +672,18 @@ if S["phase"]=="intro":
       <div class="manual-cols"><div class="manual-col">{half1}</div><div class="manual-col">{half2}</div></div></div>'''
 
     if intro_img:
-        # 이미지를 배경으로, 위쪽엔 이미지가 보이고 아래쪽에 설명서 오버레이
+        # Hero Section: 화면 높이 60vh, 원본 비율 유지(contain), 크롭/확대 없음
         st.markdown(f'''
-        <div class="intro-stage" style="background:linear-gradient(to bottom, rgba(22,39,63,0) 45%, rgba(22,39,63,.6) 62%, rgba(22,39,63,.97) 100%), url('{intro_img}') top center/cover;">
-          <div class="intro-overlay">{manual_html}</div>
+        <div class="hero-section">
+          <img src="{intro_img}" class="hero-img" alt="슬기로운 영끌생활"/>
         </div>''', unsafe_allow_html=True)
     else:
         st.markdown(f"""<div class="intro-hero">
           <div class="intro-logo">🏠 슬기로운 <span class="red">영끌</span>생활</div>
           <div class="intro-tag">부동산 투자 전략 시뮬레이션 · 시장 원리를 게임으로 배우다</div>
-        </div>{manual_html}""", unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown('<div style="height:4px;"></div>', unsafe_allow_html=True)
+    # 지역 선택 버튼 (이미지 아래 · 약 30% 영역)
     cols=st.columns(3)
     lc={"서울":"#3498db","대전":"#FFC233","제주":"#FF6347"}
     for col,(k,r) in zip(cols,REGIONS.items()):
@@ -697,6 +701,10 @@ if S["phase"]=="intro":
                     time.sleep(0.5)
                 ph.empty()
                 S["next_news"]=random.choice(NEWS_POOL); new_turn(); st.rerun()
+
+    # 게임 설명서 (접이식 · 첫 화면 스크롤 방지를 위해 expander로)
+    with st.expander("📖 게임 설명서 보기"):
+        st.markdown(manual_html, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────
 # 화면 B: 플레이
