@@ -449,67 +449,67 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
 html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
-    background:#16273f !important;color:#eaf0f8 !important;font-size:13px;}
+    background:#16273f !important;color:#eaf0f8 !important;font-size:15px;}
 #MainMenu,footer{display:none !important;}
 .main .block-container{padding:1rem 1.5rem 2rem !important;max-width:1500px !important;}
 /* 전역 최소 폰트 13px 통일 */
 .stApp p,.stApp span,.stApp div,.stApp label,.stApp button,.stApp td,.stApp th,.stCaption,
-[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p{font-size:13px !important;}
-.g-title{font-size:22px !important;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
-.g-sub{font-size:13px !important;color:#9fb4d0;margin-bottom:12px;}
+[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p{font-size:15px !important;}
+.g-title{font-size:24px !important;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
+.g-sub{font-size:15px !important;color:#9fb4d0;margin-bottom:12px;}
 
 /* 밝은 하늘색 배경 컨테이너 - 빈 div 렌더 방지 (높이 0) */
 .bright-bg{display:none;}
 
 .panel{background:#28456680;border:1px solid #3a5a80;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
 .panel-red{background:#284566;border:1px solid #FF4136;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
-.ptitle{font-size:14px !important;font-weight:700;color:#FF6b5e;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.ptitle{font-size:16px !important;font-weight:700;color:#FF6b5e;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 
 /* sticky 스탯 */
 .sticky-stat{position:sticky;top:0;z-index:999;background:#16273f;
     border:1px solid #3a5a80;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.45);}
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
 .stat-card{background:#2d4a6b;border:1px solid #3a5a80;border-radius:10px;padding:7px 8px;text-align:center;}
-.stat-card .sl{font-size:11px !important;color:#9fb4d0;margin-bottom:2px;}
-.stat-card .sv{font-size:14px !important;font-weight:800;color:#fff;}
+.stat-card .sl{font-size:13px !important;color:#9fb4d0;margin-bottom:2px;}
+.stat-card .sv{font-size:16px !important;font-weight:800;color:#fff;}
 .sv.danger{color:#FF6b5e;} .sv.warn{color:#FFC233;}
 
 .news{border-radius:12px;padding:12px 14px;margin-bottom:10px;}
 .news-good{background:rgba(46,204,113,.14);border:1px solid #2ecc71;}
 .news-bad{background:rgba(255,99,72,.14);border:1px solid #FF6347;}
-.news-head{font-size:14px !important;font-weight:700;color:#fff;margin-bottom:6px;}
-.news-info{font-size:13px !important;color:#cfe0f2;padding:2px 0;}
+.news-head{font-size:16px !important;font-weight:700;color:#fff;margin-bottom:6px;}
+.news-info{font-size:15px !important;color:#cfe0f2;padding:2px 0;}
 
 .li-card{background:#2d4a6b;border:1px solid #3a5a80;border-radius:12px;padding:11px 13px;margin-bottom:7px;display:flex;gap:12px;align-items:center;}
 .li-card.sel{border-color:#FF4136;background:#34557a;box-shadow:0 0 0 2px rgba(255,65,54,.3);}
 /* 뉴스 팝업 */
 .popup-stage{display:flex;justify-content:center;padding:30px 0;}
 .popup-card{background:#1a2e4a;border:2.5px solid #FF4136;border-radius:18px;padding:26px 30px;max-width:460px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5);}
-.popup-badge{display:inline-block;color:#fff;font-weight:900;font-size:14px !important;padding:5px 22px;border-radius:100px;margin-bottom:14px;letter-spacing:.05em;}
-.popup-head{font-size:24px !important;font-weight:900;color:#fff;margin-bottom:16px;line-height:1.3;}
-.popup-info{font-size:14px !important;color:#dce6f2;padding:5px 0;font-weight:600;}
-.life-toast{background:rgba(155,89,182,.18);border:1px solid #9b59b6;border-radius:12px;padding:12px 16px;margin:10px auto;max-width:460px;text-align:center;font-size:14px !important;color:#e8d8f8;}
+.popup-badge{display:inline-block;color:#fff;font-weight:900;font-size:16px !important;padding:5px 22px;border-radius:100px;margin-bottom:14px;letter-spacing:.05em;}
+.popup-head{font-size:26px !important;font-weight:900;color:#fff;margin-bottom:16px;line-height:1.3;}
+.popup-info{font-size:16px !important;color:#dce6f2;padding:5px 0;font-weight:600;}
+.life-toast{background:rgba(155,89,182,.18);border:1px solid #9b59b6;border-radius:12px;padding:12px 16px;margin:10px auto;max-width:460px;text-align:center;font-size:16px !important;color:#e8d8f8;}
 /* 업적 토스트 */
 .ach-wrap{position:relative;z-index:100;}
 .ach-toast{background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:14px;padding:14px 20px;margin:8px auto;max-width:420px;text-align:center;box-shadow:0 6px 24px rgba(255,180,0,.4);animation:achpop .5s ease;}
 @keyframes achpop{0%{transform:scale(.7);opacity:0;}100%{transform:scale(1);opacity:1;}}
-.ach-title{font-size:17px !important;font-weight:900;color:#3a2800;}
-.ach-desc{font-size:13px !important;color:#5a4200;margin-top:3px;font-weight:600;}
+.ach-title{font-size:19px !important;font-weight:900;color:#3a2800;}
+.ach-desc{font-size:15px !important;color:#5a4200;margin-top:3px;font-weight:600;}
 /* 프로필 바 */
 .profile-bar{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#2d4a6b,#1a2e4a);border:1px solid #3a5a80;border-radius:14px;padding:12px 18px;margin-bottom:12px;}
 .pb-avatar{font-size:34px !important;}
 .pb-info{flex:1;}
-.pb-grade{font-size:17px !important;font-weight:900;color:#FFD700;}
-.pb-sub{font-size:12px !important;color:#9fb4d0;margin-top:2px;}
+.pb-grade{font-size:19px !important;font-weight:900;color:#FFD700;}
+.pb-sub{font-size:14px !important;color:#9fb4d0;margin-top:2px;}
 .pb-conf{min-width:140px;text-align:right;}
-.pb-conf-label{font-size:11px !important;color:#9fb4d0;}
+.pb-conf-label{font-size:13px !important;color:#9fb4d0;}
 .conf-bar{height:8px;background:#1a2e4a;border-radius:100px;overflow:hidden;margin:4px 0;}
 .conf-fill{height:100%;border-radius:100px;transition:width .4s;}
-.pb-conf-val{font-size:13px !important;font-weight:800;color:#fff;}
+.pb-conf-val{font-size:15px !important;font-weight:800;color:#fff;}
 /* AI 예측 카드 */
 .predict-card{background:linear-gradient(135deg,rgba(124,77,255,.16),rgba(255,194,51,.08));border:1.5px solid #FFC233;border-radius:14px;padding:14px 16px;margin-bottom:12px;}
-.pred-head{font-size:14px !important;font-weight:800;color:#FFC233;margin-bottom:8px;}
-.pred-row{display:flex;justify-content:space-between;font-size:13px !important;color:#dce6f2;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.pred-head{font-size:16px !important;font-weight:800;color:#FFC233;margin-bottom:8px;}
+.pred-row{display:flex;justify-content:space-between;font-size:15px !important;color:#dce6f2;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08);}
 .pred-row:last-child{border-bottom:none;}
 /* 매물 게임 카드 */
 .game-card{background:#2d4a6b;border:1.5px solid #3a5a80;border-radius:14px;padding:12px;margin-bottom:6px;display:flex;gap:14px;align-items:flex-start;transition:.15s;}
@@ -517,30 +517,30 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .game-card.rare{border:2px solid #FFD700;background:linear-gradient(135deg,#3a3420,#2d2a1a);box-shadow:0 0 16px rgba(255,215,0,.35);}
 .gc-thumb{flex:0 0 auto;}
 .gc-body{flex:1;min-width:0;}
-.gc-name{font-size:15px !important;font-weight:800;color:#fff;}
-.rare-badge{background:#FFD700;color:#3a2800;font-size:10px !important;font-weight:900;padding:1px 7px;border-radius:100px;margin-left:6px;}
-.gc-meta{font-size:12px !important;color:#9fb4d0;margin:2px 0 6px;}
-.gc-stars{font-size:12px !important;color:#bdd0e8;display:flex;gap:8px;padding:1px 0;}
+.gc-name{font-size:17px !important;font-weight:800;color:#fff;}
+.rare-badge{background:#FFD700;color:#3a2800;font-size:12px !important;font-weight:900;padding:1px 7px;border-radius:100px;margin-left:6px;}
+.gc-meta{font-size:14px !important;color:#9fb4d0;margin:2px 0 6px;}
+.gc-stars{font-size:14px !important;color:#bdd0e8;display:flex;gap:8px;padding:1px 0;}
 .gc-stars span{flex:0 0 48px;}
-.gc-price{font-size:13px !important;color:#dce6f2;margin-top:6px;}
-.gc-price b{color:#fff;font-size:15px !important;}
+.gc-price{font-size:15px !important;color:#dce6f2;margin-top:6px;}
+.gc-price b{color:#fff;font-size:17px !important;}
 /* 턴 종료 연출 */
-.turn-loading{text-align:center;padding:50px;font-size:20px !important;font-weight:800;color:#FFC233;text-shadow:0 2px 12px rgba(255,194,51,.4);}
+.turn-loading{text-align:center;padding:50px;font-size:22px !important;font-weight:800;color:#FFC233;text-shadow:0 2px 12px rgba(255,194,51,.4);}
 .ach-badges{display:flex;flex-wrap:wrap;gap:8px;}
-.ach-badge{background:linear-gradient(135deg,#FFD700,#FFA500);color:#3a2800;font-size:12px !important;font-weight:800;padding:5px 12px;border-radius:100px;}
+.ach-badge{background:linear-gradient(135deg,#FFD700,#FFA500);color:#3a2800;font-size:14px !important;font-weight:800;padding:5px 12px;border-radius:100px;}
 /* AI 응답 박스 */
-.ai-box{background:linear-gradient(135deg,rgba(124,77,255,.15),rgba(124,77,255,.05));border:1.5px solid #9b59b6;border-radius:14px;padding:16px;margin:10px 0;white-space:pre-wrap;font-size:13px !important;color:#e4eef8;line-height:1.7;}
-.ai-title{font-size:14px !important;font-weight:800;color:#c39bd3;margin-bottom:10px;}
+.ai-box{background:linear-gradient(135deg,rgba(124,77,255,.15),rgba(124,77,255,.05));border:1.5px solid #9b59b6;border-radius:14px;padding:16px;margin:10px 0;white-space:pre-wrap;font-size:15px !important;color:#e4eef8;line-height:1.7;}
+.ai-title{font-size:16px !important;font-weight:800;color:#c39bd3;margin-bottom:10px;}
 /* AI 투자 리그 랭킹 */
 .rank-board{background:linear-gradient(135deg,#1a2e4a,#0f2238);border:1.5px solid #FFD700;border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-.rank-title{font-size:14px !important;font-weight:800;color:#FFD700;margin-bottom:10px;}
+.rank-title{font-size:16px !important;font-weight:800;color:#FFD700;margin-bottom:10px;}
 .rank-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;margin-bottom:3px;}
-.rank-medal{font-size:18px !important;flex:0 0 26px;}
-.rank-name{flex:1;font-size:13px !important;font-weight:700;color:#fff;}
-.rank-nw{font-size:13px !important;font-weight:700;color:#dce6f2;flex:0 0 100px;text-align:right;}
-.rank-rate{font-size:13px !important;font-weight:800;flex:0 0 64px;text-align:right;}
+.rank-medal{font-size:20px !important;flex:0 0 26px;}
+.rank-name{flex:1;font-size:15px !important;font-weight:700;color:#fff;}
+.rank-nw{font-size:15px !important;font-weight:700;color:#dce6f2;flex:0 0 100px;text-align:right;}
+.rank-rate{font-size:15px !important;font-weight:800;flex:0 0 64px;text-align:right;}
 .npc-cmt-box{background:#1a2e4a;border:1px solid #3a5a80;border-radius:12px;padding:12px 14px;margin-bottom:10px;}
-.npc-cmt{font-size:12px !important;color:#cfe0f2;padding:4px 0;line-height:1.5;}
+.npc-cmt{font-size:14px !important;color:#cfe0f2;padding:4px 0;line-height:1.5;}
 .li-thumb{flex:0 0 auto;}
 .thumb{width:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     box-shadow:0 2px 8px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);}
@@ -548,34 +548,34 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .inv-card{border-radius:12px;padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:center;}
 .inv-profit{background:rgba(46,204,113,.12);border:1px solid #2ecc71;}
 .inv-loss{background:rgba(255,99,72,.12);border:1px solid #FF6347;}
-.empty-box{background:#2d4a6b;border:1px dashed #4a6a90;border-radius:12px;padding:18px;text-align:center;font-size:13px !important;color:#9fb4d0;line-height:1.7;}
-.log-card{background:#28456680;border-radius:8px;padding:7px 10px;margin-bottom:5px;font-size:12px !important;color:#cfe0f2;}
-.li-name{font-size:13px !important;font-weight:700;color:#fff;}
-.li-tag{font-size:11px !important;font-weight:700;padding:1px 8px;border-radius:100px;margin-left:6px;}
+.empty-box{background:#2d4a6b;border:1px dashed #4a6a90;border-radius:12px;padding:18px;text-align:center;font-size:15px !important;color:#9fb4d0;line-height:1.7;}
+.log-card{background:#28456680;border-radius:8px;padding:7px 10px;margin-bottom:5px;font-size:14px !important;color:#cfe0f2;}
+.li-name{font-size:15px !important;font-weight:700;color:#fff;}
+.li-tag{font-size:13px !important;font-weight:700;padding:1px 8px;border-radius:100px;margin-left:6px;}
 .tag-cap{background:rgba(52,152,219,.25);color:#5dade2;}
 .tag-rent{background:rgba(46,204,113,.25);color:#58d68d;}
-.li-price{font-size:13px !important;color:#bdd0e8;margin-top:3px;}
+.li-price{font-size:15px !important;color:#bdd0e8;margin-top:3px;}
 
 .quiz-box{background:#34557a;border:1px solid #FF4136;border-radius:12px;padding:14px;margin:10px 0;}
-.quiz-def{font-size:13px !important;color:#e4eef8;line-height:1.7;background:#1a2e4a;border-radius:10px;padding:11px;margin-bottom:8px;border:1px dashed #4a6a90;}
+.quiz-def{font-size:15px !important;color:#e4eef8;line-height:1.7;background:#1a2e4a;border-radius:10px;padding:11px;margin-bottom:8px;border:1px dashed #4a6a90;}
 .ap-box{background:#34557a;border:1px solid #2ecc71;border-radius:12px;padding:14px;margin:10px 0;}
-.ap-step{font-size:13px !important;color:#cfe0f2;padding:4px 0;border-bottom:1px solid #3a5a80;}
-.ap-step:last-child{border-bottom:none;font-size:14px !important;font-weight:800;color:#2ecc71;padding-top:8px;}
+.ap-step{font-size:15px !important;color:#cfe0f2;padding:4px 0;border-bottom:1px solid #3a5a80;}
+.ap-step:last-child{border-bottom:none;font-size:16px !important;font-weight:800;color:#2ecc71;padding-top:8px;}
 
-.inv-item{border-radius:10px;padding:9px 11px;margin-bottom:6px;font-size:13px !important;font-weight:600;}
+.inv-item{border-radius:10px;padding:9px 11px;margin-bottom:6px;font-size:15px !important;font-weight:600;}
 .inv-profit{background:rgba(46,204,113,.12);border:1px solid #2ecc71;}
 .inv-loss{background:rgba(255,99,72,.12);border:1px solid #FF6347;}
 
 .display{background:#284566;border:1px solid #3a5a80;border-radius:14px;padding:16px;}
-.disp-item{font-size:13px !important;color:#cfe0f2;padding:6px 0;border-bottom:1px solid #3a5a80;}
+.disp-item{font-size:15px !important;color:#cfe0f2;padding:6px 0;border-bottom:1px solid #3a5a80;}
 .disp-item:last-child{border-bottom:none;}
-.disp-label{color:#9fb4d0;font-size:12px !important;}
+.disp-label{color:#9fb4d0;font-size:14px !important;}
 .forecast{background:rgba(255,194,51,.12);border:1px solid #FFC233;border-radius:12px;padding:13px;margin-top:10px;}
-.forecast-head{font-size:13px !important;font-weight:700;color:#FFC233;margin-bottom:6px;}
-.forecast-body{font-size:13px !important;color:#f0e0b0;line-height:1.6;}
-.log-item{font-size:12px !important;color:#9fb4d0;padding:3px 0;border-bottom:1px solid #2a4565;}
+.forecast-head{font-size:15px !important;font-weight:700;color:#FFC233;margin-bottom:6px;}
+.forecast-body{font-size:15px !important;color:#f0e0b0;line-height:1.6;}
+.log-item{font-size:14px !important;color:#9fb4d0;padding:3px 0;border-bottom:1px solid #2a4565;}
 
-.stButton>button{font-family:'Urbanist','Noto Sans KR',sans-serif !important;font-weight:700 !important;font-size:13px !important;
+.stButton>button{font-family:'Urbanist','Noto Sans KR',sans-serif !important;font-weight:700 !important;font-size:15px !important;
     border-radius:10px !important;background:#2d4a6b !important;border:1px solid #3a5a80 !important;
     color:#fff !important;transition:.12s !important;}
 .stButton>button:hover{background:#FF4136 !important;border-color:#FF4136 !important;transform:translateY(-1px);}
@@ -584,9 +584,9 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 
 /* 설명서 팝업 (반투명) */
 .manual-pop{background:#1a2e4af2;border:2px solid #FF4136;border-radius:16px;padding:20px 24px;margin-bottom:14px;backdrop-filter:blur(6px);}
-.manual-pop h4{color:#FF6b5e;font-size:15px !important;margin:0 0 12px;}
+.manual-pop h4{color:#FF6b5e;font-size:17px !important;margin:0 0 12px;}
 .manual-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-.manual-item{font-size:13px !important;color:#e4eef8;padding:6px 0;line-height:1.6;display:flex;gap:10px;}
+.manual-item{font-size:15px !important;color:#e4eef8;padding:6px 0;line-height:1.6;display:flex;gap:10px;}
 .manual-item .num{color:#FF6b5e;font-weight:800;flex:0 0 22px;}
 
 .intro-hero{text-align:center;padding:30px 0 10px;}
@@ -594,17 +594,19 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
     display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:8px;
     box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .intro-overlay{padding:0 20px 16px;}
-.intro-manual{background:rgba(16,28,48,.85);border:1.5px solid #FF4136;border-radius:12px;
+.intro-manual{background:rgba(16,28,48,.88);border:1.5px solid #FF4136;border-radius:12px;
     padding:12px 18px;backdrop-filter:blur(4px);}
-.intro-manual h4{color:#FF8b7e;font-size:14px !important;margin:0 0 7px;font-weight:800;}
-.intro-manual .manual-item{padding:3px 0;line-height:1.4;}
+.intro-manual summary{color:#FF8b7e;font-size:17px !important;font-weight:800;cursor:pointer;list-style:none;}
+.intro-manual summary::-webkit-details-marker{display:none;}
+.intro-manual[open] summary{margin-bottom:10px;}
+.intro-manual .manual-item{padding:3px 0;line-height:1.45;}
 .intro-logo{font-size:40px !important;font-weight:900;color:#fff;letter-spacing:-0.02em;}
 .intro-logo .red{color:#FF6b5e;}
-.intro-tag{font-size:14px !important;color:#9fb4d0;margin-top:8px;}
+.intro-tag{font-size:16px !important;color:#9fb4d0;margin-top:8px;}
 .region-card{background:#284566;border:2px solid #3a5a80;border-radius:16px;padding:20px;text-align:center;height:100%;}
-.rc-icon{font-size:38px !important;} .rc-name{font-size:19px !important;font-weight:900;color:#fff;margin-top:6px;}
-.rc-level{display:inline-block;font-size:12px !important;font-weight:700;padding:2px 12px;border-radius:100px;margin:6px 0;}
-.rc-desc{font-size:12px !important;color:#9fb4d0;line-height:1.6;}
+.rc-icon{font-size:38px !important;} .rc-name{font-size:21px !important;font-weight:900;color:#fff;margin-top:6px;}
+.rc-level{display:inline-block;font-size:14px !important;font-weight:700;padding:2px 12px;border-radius:100px;margin:6px 0;}
+.rc-desc{font-size:14px !important;color:#9fb4d0;line-height:1.6;}
 
 .report-hero{text-align:center;padding:24px;border-radius:18px;margin-bottom:20px;}
 /* 결과 이미지 풀 배경 + 카드 오버레이 */
@@ -614,25 +616,25 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .result-card{background:rgba(12,22,38,.86);border:2.5px solid #2ecc71;border-radius:18px;
     padding:24px 28px 22px;max-width:480px;width:100%;text-align:center;backdrop-filter:blur(6px);
     box-shadow:0 12px 40px rgba(0,0,0,.5);position:relative;}
-.result-badge{display:inline-block;color:#fff;font-weight:900;font-size:15px !important;
+.result-badge{display:inline-block;color:#fff;font-weight:900;font-size:17px !important;
     padding:4px 22px;border-radius:100px;margin-bottom:14px;letter-spacing:.05em;}
 .result-headline{font-size:42px !important;font-weight:900;line-height:1.1;text-shadow:0 2px 14px rgba(0,0,0,.6);}
-.result-sub{font-size:14px !important;color:#dce6f2;margin:8px 0 18px;font-weight:600;}
+.result-sub{font-size:16px !important;color:#dce6f2;margin:8px 0 18px;font-weight:600;}
 .result-rows{text-align:left;}
 .rrow{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;
-    border-bottom:1px solid rgba(255,255,255,.1);font-size:14px !important;color:#cfe0f2;font-weight:600;}
-.rrow .rval{font-weight:800;color:#fff;font-size:15px !important;}
-.rrow.total{border-bottom:none;margin-top:6px;padding-top:12px;font-size:15px !important;}
+    border-bottom:1px solid rgba(255,255,255,.1);font-size:16px !important;color:#cfe0f2;font-weight:600;}
+.rrow .rval{font-weight:800;color:#fff;font-size:17px !important;}
+.rrow.total{border-bottom:none;margin-top:6px;padding-top:12px;font-size:17px !important;}
 .report-big{font-size:52px !important;font-weight:900;line-height:1;}
-.report-label{font-size:14px !important;margin-top:10px;font-weight:600;}
+.report-label{font-size:16px !important;margin-top:10px;font-weight:600;}
 .profit{background:linear-gradient(135deg,rgba(46,204,113,.15),rgba(46,204,113,.05));border:2px solid #2ecc71;}
 .profit .report-big{color:#2ecc71;} .profit .report-label{color:#82e0aa;}
 .loss{background:linear-gradient(135deg,rgba(255,99,72,.15),rgba(255,99,72,.05));border:2px solid #FF6347;}
 .loss .report-big{color:#FF6347;} .loss .report-label{color:#ff9b8b;}
 .calc-table{width:100%;border-collapse:collapse;margin:14px 0;}
-.calc-table td{padding:10px 14px;border-bottom:1px solid #3a5a80;font-size:14px !important;color:#e4eef8;}
+.calc-table td{padding:10px 14px;border-bottom:1px solid #3a5a80;font-size:16px !important;color:#e4eef8;}
 .calc-table td.r{text-align:right;font-weight:700;color:#fff;}
-.calc-table tr.total td{border-top:2px solid #FF4136;border-bottom:none;font-size:16px !important;font-weight:900;color:#fff;padding-top:14px;}
+.calc-table tr.total td{border-top:2px solid #FF4136;border-bottom:none;font-size:18px !important;font-weight:900;color:#fff;padding-top:14px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -664,8 +666,8 @@ if S["phase"]=="intro":
                   for i,(t,d) in enumerate(MANUAL_ITEMS[:4]))
     half2="".join(f'<div class="manual-item"><span class="num">{i+5}</span><span><b>{t}</b> — {d}</span></div>'
                   for i,(t,d) in enumerate(MANUAL_ITEMS[4:]))
-    manual_html=f'''<div class="intro-manual"><h4>📖 게임 설명서</h4>
-      <div class="manual-cols"><div class="manual-col">{half1}</div><div class="manual-col">{half2}</div></div></div>'''
+    manual_html=f'''<details class="intro-manual"><summary>📖 게임 설명서 (눌러서 펼치기)</summary>
+      <div class="manual-cols"><div class="manual-col">{half1}</div><div class="manual-col">{half2}</div></div></details>'''
 
     if intro_img:
         # 이미지 배경(상단 33vh, 원본비율 확대 cover) + 설명서 반투명 오버레이
@@ -693,7 +695,7 @@ if S["phase"]=="intro":
                 init_npcs()
                 ph=st.empty()
                 for msg in ["🗺️ 지도 로딩 중...","🏢 매물 스카우팅 중...","📊 시장 분석 중..."]:
-                    ph.markdown(f'<div style="text-align:center;padding:40px;font-size:18px;font-weight:700;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
+                    ph.markdown(f'<div style="text-align:center;padding:40px;font-size:20px;font-weight:700;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
                     time.sleep(0.5)
                 ph.empty()
                 S["next_news"]=random.choice(NEWS_POOL); new_turn(); st.rerun()
@@ -866,7 +868,7 @@ elif S["phase"]=="play":
         if S["selected"] and any(x["id"]==S["selected"] for x in S["market"]):
             L=next(x for x in S["market"] if x["id"]==S["selected"])
             st.markdown('<div class="ptitle" style="margin-top:14px;">🎯 감정평가 도구</div>', unsafe_allow_html=True)
-            st.markdown(f'<div style="font-size:13px;color:#bdd0e8;margin-bottom:8px;">선택: <b style="color:#fff;">{L["name"]}</b> ({L["tag"]}) · 호가 {won(L["current"])}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-size:15px;color:#bdd0e8;margin-bottom:8px;">선택: <b style="color:#fff;">{L["name"]}</b> ({L["tag"]}) · 호가 {won(L["current"])}</div>', unsafe_allow_html=True)
 
             if S["appraised"] is None:
                 st.caption(f"해금된 도구: {', '.join(S['unlocked']) if S['unlocked'] else '없음 (퀴즈로 해금)'}")
@@ -937,7 +939,7 @@ elif S["phase"]=="play":
                 st.markdown(f"""<div class="inv-card {"inv-profit" if p>=0 else "inv-loss"}">
                   <div class="li-thumb">{type_thumb(L['type'],52)}</div>
                   <div class="li-body">
-                    <div class="li-name">{L['name']} <span style="font-size:12px;color:#9fb4d0;">({L['type']})</span> <span style="float:right;color:{scol};font-size:12px;">{status}</span></div>
+                    <div class="li-name">{L['name']} <span style="font-size:14px;color:#9fb4d0;">({L['type']})</span> <span style="float:right;color:{scol};font-size:14px;">{status}</span></div>
                     <div class="li-price">현재 {won(L['current'])} · 월세 {L['monthly']}만</div>
                     <div class="li-price" style="font-weight:800;color:{'#2ecc71' if p>=0 else '#FF6347'};">손익 {"+" if p>=0 else ""}{won(p)} ({rate:+.1f}%)</div>
                   </div>
@@ -1032,7 +1034,7 @@ elif S["phase"]=="end":
     if not S.get("_report_shown"):
         ph=st.empty()
         for msg in ["📊 최종 자산 집계 중...","🧮 실질 수익 계산 중...","📑 리포트 생성 중..."]:
-            ph.markdown(f'<div style="text-align:center;padding:60px;font-size:20px;font-weight:800;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
+            ph.markdown(f'<div style="text-align:center;padding:60px;font-size:22px;font-weight:800;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
             time.sleep(0.6)
         ph.empty(); S["_report_shown"]=True
 
@@ -1098,8 +1100,8 @@ elif S["phase"]=="end":
     elif rate>=0: grade,msg="👍 본전 사수","원금은 지켰지만 인플레를 겨우 따라갔어요."
     else: grade,msg="📚 수업료를 낸 새내기","손실도 경험! 시장 원리의 중요성을 배웠습니다."
     st.markdown(f"""<div class="panel-red" style="text-align:center;margin-top:8px;">
-      <div style="font-size:22px;font-weight:900;color:#fff;">{grade}</div>
-      <div style="font-size:13px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
+      <div style="font-size:24px;font-weight:900;color:#fff;">{grade}</div>
+      <div style="font-size:15px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
 
     # ── AI 투자 리그 최종 결과 ──
     if S["npcs"]:
@@ -1117,7 +1119,7 @@ elif S["phase"]=="end":
             hl="background:rgba(255,215,0,.15);" if key=="나" else ""
             rows+=f"""<div class="rank-row" style="{hl}">
               <span class="rank-medal">{medals[i]}</span>
-              <span class="rank-name">{label} <span style="font-size:11px;color:#9fb4d0;">{style if style!='-' else '플레이어'}</span></span>
+              <span class="rank-name">{label} <span style="font-size:13px;color:#9fb4d0;">{style if style!='-' else '플레이어'}</span></span>
               <span class="rank-nw">{won(nw)}</span>
               <span class="rank-rate" style="color:{'#2ecc71' if rate>=0 else '#FF6347'};">{rate:+.1f}%</span>
             </div>"""
@@ -1175,9 +1177,9 @@ elif S["phase"]=="end":
     elif S["max_debt"]==0: style2="· 무대출 보수형"
     else: style2="· 적정 레버리지형"
     st.markdown(f"""<div class="panel" style="text-align:center;margin-top:10px;">
-      <div style="font-size:13px;color:#9fb4d0;">나의 투자 스타일</div>
-      <div style="font-size:18px;font-weight:900;color:#FFD700;margin:4px 0;">{style}</div>
-      <div style="font-size:12px;color:#bdd0e8;">{sdesc} {style2}</div>
+      <div style="font-size:15px;color:#9fb4d0;">나의 투자 스타일</div>
+      <div style="font-size:20px;font-weight:900;color:#FFD700;margin:4px 0;">{style}</div>
+      <div style="font-size:14px;color:#bdd0e8;">{sdesc} {style2}</div>
     </div>""", unsafe_allow_html=True)
 
     # 획득 업적
