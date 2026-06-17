@@ -112,16 +112,28 @@ ACHIEVEMENTS = {
     "no_debt":("🛡️ 무대출 플레이","대출 없이 5턴을 버텼습니다!"),
 }
 
-# [패치③] 사후 학습효과 측정용 문제 은행 (감정평가 개념 이해도)
+# [패치③] 사후 학습효과 측정용 문제 은행
+# (감정평가 '방법 구분'은 무기 선택 자격시험으로 갈음 → 여기서는 게임을 하며 체득하는
+#  실생활 부동산 기본 상식 위주로 출제: 사고 파는 데 필요한 판단 지식)
 POST_QUIZ_BANK = [
-    {"q":"월세 수익이 핵심인 오피스텔·상가의 가치를 평가할 때 가장 적합한 방법은?",
-     "answer":"수익환원법","options":["수익환원법","거래사례비교법","원가법"]},
-    {"q":"주변에 비슷한 거래가 많은 아파트의 시세를 평가할 때 가장 적합한 방법은?",
-     "answer":"거래사례비교법","options":["원가법","거래사례비교법","수익환원법"]},
-    {"q":"'무권리'로 나온 상가처럼, 다시 지을 때 드는 비용으로 값을 매기는 방법은?",
-     "answer":"원가법","options":["거래사례비교법","수익환원법","원가법"]},
-    {"q":"대출 한도 LTV 60%가 의미하는 것은?",
-     "answer":"집값의 60%까지만 빌릴 수 있다","options":["집값의 60%까지만 빌릴 수 있다","내 돈 60%가 필요하다","이자가 60%다"]},
+    {"q":"대출 한도 'LTV 60%'는 무슨 뜻일까요?",
+     "answer":"집값의 60%까지만 빌릴 수 있다",
+     "options":["집값의 60%까지만 빌릴 수 있다","내 돈이 60% 필요하다","이자가 60%다"]},
+    {"q":"감정평가 결과 '진짜 가치 > 가격'이면 어떤 상태일까요?",
+     "answer":"저평가 — 사면 이득",
+     "options":["저평가 — 사면 이득","고평가 — 비싼 편","적정가 — 그대로"]},
+    {"q":"대출(빚)을 많이 쓸수록 매년 늘어나는 부담은 무엇일까요?",
+     "answer":"대출 이자",
+     "options":["대출 이자","월세 수입","보증금"]},
+    {"q":"금리가 '인상'되면 일반적으로 집값과 대출이자는 어떻게 될까요?",
+     "answer":"집값 ↓ · 대출이자 ↑",
+     "options":["집값 ↓ · 대출이자 ↑","집값 ↑ · 대출이자 ↓","둘 다 그대로"]},
+    {"q":"오피스텔·상가가 아파트보다 일반적으로 높은 것은 무엇일까요?",
+     "answer":"월세 수익률",
+     "options":["월세 수익률","시세 상승폭","안전성"]},
+    {"q":"시간이 지나면 돈의 가치가 떨어지는 현상을 무엇이라 할까요?",
+     "answer":"인플레이션(물가상승)",
+     "options":["인플레이션(물가상승)","디플레이션","레버리지"]},
 ]
 
 # ─────────────────────────────────────────────────────
@@ -1210,7 +1222,7 @@ elif S["phase"]=="end":
       <div style="font-size:15px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
 
     # ════════ [패치③] 사후 학습효과 측정 퀴즈 ════════
-    st.markdown('<div class="ptitle" style="margin-top:18px;">🎓 감정평가 이해도 체크 (수료 시험)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ptitle" style="margin-top:18px;">🎓 부동산 상식 체크 (수료 시험)</div>', unsafe_allow_html=True)
     if S.get("post_quiz") is None:
         # 문제 3개 랜덤 출제 (보기 순서도 섞음)
         picked=random.sample(POST_QUIZ_BANK, 3)
@@ -1222,7 +1234,7 @@ elif S["phase"]=="end":
     pq=S["post_quiz"]
 
     if not pq["submitted"]:
-        st.markdown('<div style="color:#eaf0f8;font-size:15px;margin-bottom:6px;">게임에서 배운 감정평가 개념을 확인해봐요. 결과로 학습 효과를 측정합니다.</div>', unsafe_allow_html=True)
+        st.markdown('<div style="color:#eaf0f8;font-size:15px;margin-bottom:6px;">게임을 하며 익힌 부동산 기본 상식을 확인해봐요. 결과로 학습 효과를 측정합니다.</div>', unsafe_allow_html=True)
         for qi,item in enumerate(pq["set"]):
             st.markdown(f'<div style="font-weight:700;color:#fff;margin:10px 0 4px;">Q{qi+1}. {item["q"]}</div>', unsafe_allow_html=True)
             pq["answers"][qi]=st.radio(f"q{qi}", item["options"], key=f"pq_{qi}",
@@ -1237,9 +1249,9 @@ elif S["phase"]=="end":
         pre_ok = S.get("pre_quiz_first_try")
         pre_txt = ("높음 (자격시험 1회 통과)" if pre_ok else "낮음 (자격시험 재시도)") if pre_ok is not None else "미측정"
         # 학습효과 한 줄 진단
-        if post_rate>=100: diag="완벽 이해 — 감정평가 3방법을 정확히 구분합니다."; bc="#2ecc71"
-        elif post_rate>=67: diag="양호 — 핵심 개념을 대체로 이해했습니다."; bc="#FFC233"
-        else: diag="복습 권장 — 무기별 적합 매물을 다시 살펴보세요."; bc="#FF6347"
+        if post_rate>=100: diag="완벽 이해 — 부동산 매매 기본 원리를 정확히 파악했습니다."; bc="#2ecc71"
+        elif post_rate>=67: diag="양호 — 사고 파는 데 필요한 핵심을 대체로 이해했습니다."; bc="#FFC233"
+        else: diag="복습 권장 — 대출·금리·수익 개념을 다시 떠올려보세요."; bc="#FF6347"
         rows=""
         for qi,item in enumerate(pq["set"]):
             ua=pq["answers"].get(qi); ok=ua==item["answer"]
