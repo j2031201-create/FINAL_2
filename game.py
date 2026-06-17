@@ -503,6 +503,21 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .main .block-container{padding:1rem 1.5rem 2rem !important;max-width:1500px !important;}
 .stApp p,.stApp span,.stApp div,.stApp label,.stApp button,.stApp td,.stApp th,.stCaption,
 [data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p{font-size:15px !important;}
+/* ── 가독성: 어두운 배경에서 본문 글씨 전체를 밝은색으로 통일 ── */
+/* 라디오(퀴즈 보기) 글씨가 검정으로 묻히는 문제 해결 */
+.stApp [data-testid="stRadio"] label,
+.stApp [data-testid="stRadio"] label p,
+.stApp [data-testid="stRadio"] label div,
+.stApp [role="radiogroup"] label,
+.stApp [role="radiogroup"] label p,
+.stApp [data-baseweb="radio"] div{
+    color:#eaf0f8 !important;-webkit-text-fill-color:#eaf0f8 !important;}
+/* 안내문(caption)이 회색으로 안 보이는 문제 해결 → 밝은 회청색으로 */
+.stApp .stCaption,.stApp [data-testid="stCaptionContainer"],
+.stApp [data-testid="stCaptionContainer"] p{
+    color:#bdd0e8 !important;-webkit-text-fill-color:#bdd0e8 !important;}
+/* 라디오 위젯 라벨(질문 q0 등 숨김 라벨 외) 기본 텍스트도 밝게 */
+.stApp [data-testid="stWidgetLabel"] p{color:#eaf0f8 !important;}
 .g-title{font-size:24px !important;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:2px;}
 .g-sub{font-size:15px !important;color:#9fb4d0;margin-bottom:12px;}
 .bright-bg{display:none;}
@@ -1207,7 +1222,7 @@ elif S["phase"]=="end":
     pq=S["post_quiz"]
 
     if not pq["submitted"]:
-        st.caption("게임에서 배운 감정평가 개념을 확인해봐요. 결과로 학습 효과를 측정합니다.")
+        st.markdown('<div style="color:#eaf0f8;font-size:15px;margin-bottom:6px;">게임에서 배운 감정평가 개념을 확인해봐요. 결과로 학습 효과를 측정합니다.</div>', unsafe_allow_html=True)
         for qi,item in enumerate(pq["set"]):
             st.markdown(f'<div style="font-weight:700;color:#fff;margin:10px 0 4px;">Q{qi+1}. {item["q"]}</div>', unsafe_allow_html=True)
             pq["answers"][qi]=st.radio(f"q{qi}", item["options"], key=f"pq_{qi}",
@@ -1239,7 +1254,7 @@ elif S["phase"]=="end":
           <div class="qr-badge" style="background:{bc}22;color:{bc};">{diag}</div>
           <div style="margin-top:10px;">{rows}</div>
         </div>""", unsafe_allow_html=True)
-        st.caption("※ 사전(게임 시작 자격시험) → 사후(이 시험)의 정답을 비교해 게임의 학습 효과를 자가 측정합니다.")
+        st.markdown('<div style="color:#bdd0e8;font-size:14px;margin-top:6px;">※ 사전(게임 시작 자격시험) → 사후(이 시험)의 정답을 비교해 게임의 학습 효과를 자가 측정합니다.</div>', unsafe_allow_html=True)
 
     if S["npcs"]:
         st.markdown('<div class="ptitle" style="margin-top:16px;">🏆 AI 투자 리그 최종 결과</div>', unsafe_allow_html=True)
