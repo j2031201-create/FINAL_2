@@ -1136,8 +1136,13 @@ elif S["phase"]=="play":
 
 # ─────────────────────────────────────────────────────
 # 화면 C: 결산 리포트
-# ─────────────────────────────────────────────────────
-elif S["phase"]=="end":
+# ─────────────────────────────────────────────────────elif S["phase"]=="end":
+    # 결과 진입 시 스크롤을 항상 최상단으로 (퀴즈 위치로 튀는 문제 방지)
+    st.markdown("""<script>
+      window.parent.document.querySelector('section.main')?.scrollTo(0,0);
+      window.scrollTo(0,0);
+    </script>""", unsafe_allow_html=True)
+
     if not S.get("_report_shown"):
         ph=st.empty()
         for msg in ["📊 최종 자산 집계 중...","🧮 실질 수익 계산 중...","📑 리포트 생성 중..."]:
@@ -1148,7 +1153,6 @@ elif S["phase"]=="end":
     assets=S["capital"]+sum(L["current"] for L in S["owned"])
     net_worth=assets-S["debt"]
     start=REGIONS[S["region"]]["capital"]
-    # [패치①] 인플레이션 보정 — 고정상수 대신 매 턴 변동분의 누적(복리)으로 계산
     if S.get("inflation_history"):
         cum=1.0
         for r in S["inflation_history"]: cum*=(1+r)
@@ -1174,6 +1178,15 @@ elif S["phase"]=="end":
     acc = "#2ecc71" if win else "#FF4136"
     bigcol = "#7CFFAA" if win else "#FF8b7b"
 
+    # 투자 스타일 (히어로에 함께 표기하려고 먼저 계산)
+    if S["apt_count"]>S["rent_count"]: style,sdesc="📈 가치투자자","아파트 시세차익 중심"
+    elif S["rent_count"]>S["apt_count"]: style,sdesc="🏠 임대사업가","월세수익형 현금흐름 중심"
+    else: style,sdesc="⚖️ 균형투자자","시세차익·월세 균형"
+    if S["max_debt"]>=50000: style2="레버리지 적극형"
+    elif S["max_debt"]==0: style2="무대출 보수형"
+    else: style2="적정 레버리지형"
+
+    # ════════ 1) 히어로 — 결과 요약 + 투자 스타일 한 줄 ════════
     if result_img:
         ov = "rgba(14,28,20,.62)" if win else "rgba(34,12,12,.66)"
         st.markdown(f'''
@@ -1184,10 +1197,13 @@ elif S["phase"]=="end":
             <div class="result-sub">{sub}</div>
             <div class="result-rows">
               <div class="rrow"><span>💰 실질 수익</span><span class="rval" style="color:{bigcol};">{sign}{won(real)}</span></div>
-              <div class="rrow"><span>🏠 보유 자산 가치</span><span class="rval">{won(assets)}</span></div>
               <div class="rrow"><span>📊 투자 수익률</span><span class="rval" style="color:{bigcol};">{rate:+.1f}%</span></div>
-              <div class="rrow"><span>📑 총 대출 (부채)</span><span class="rval">-{won(S['debt'])}</span></div>
               <div class="rrow total" style="border-top:2px solid {acc};"><span>🪙 최종 순자산</span><span class="rval" style="color:{bigcol};">{won(net_worth)}</span></div>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.2);">
+              <span style="font-size:14px;color:#9fb4d0;">나의 투자 스타일</span><br>
+              <span style="font-size:18px;font-weight:900;color:#FFD700;">{style}</span>
+              <span style="font-size:13px;color:#bdd0e8;"> · {sdesc} · {style2}</span>
             </div>
           </div>
         </div>''', unsafe_allow_html=True)
@@ -1196,103 +1212,47 @@ elif S["phase"]=="end":
         if S.get("game_over"): st.error("💔 파산 엔딩!")
         st.markdown(f"""<div class="report-hero {cls}">
           <div class="report-big">{sign}{won(real)}</div>
-          <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div></div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="ptitle" style="margin-top:18px;">🧮 실질 수익 상세 계산</div>', unsafe_allow_html=True)
-    st.markdown(f"""<table class="calc-table">
-      <tr><td>최종 순자산 (자산 − 부채)</td><td class="r">{won(net_worth)}</td></tr>
-      <tr><td>(−) 초기 자본금</td><td class="r">− {won(start)}</td></tr>
-      <tr><td>= 명목 수익</td><td class="r">{'+' if nominal>=0 else ''}{won(nominal)}</td></tr>
-      <tr><td>(−) 누적 대출 이자</td><td class="r">− {won(S['total_interest'])}</td></tr>
-      <tr><td>(−) 인플레이션 보정 (연평균 {infl_avg*100:.1f}%·{TURN_MAX}년 변동)</td><td class="r">− {won(inflation_adj)}</td></tr>
-      <tr class="total"><td>= 실질 수익</td><td class="r">{sign}{won(real)}</td></tr>
-    </table>""", unsafe_allow_html=True)
-    # [패치①] 연도별 변동 물가 표기
-    if S.get("inflation_history"):
-        infl_line=" · ".join(f"{START_YEAR+i}년 {r*100:.1f}%" for i,r in enumerate(S["inflation_history"]))
-        st.caption(f"📈 연도별 물가상승률(변동): {infl_line}")
-
-    if S.get("game_over"): grade,msg="💔 파산","대출 관리에 실패했습니다. 다음엔 영끌을 조심하세요!"
-    elif rate>=40: grade,msg="🏆 부동산 마스터","시장 원리와 감정평가를 완벽히 활용했습니다!"
-    elif rate>=10: grade,msg="💼 유능한 투자자","인플레이션을 이기는 실질 수익을 냈습니다!"
-    elif rate>=0: grade,msg="👍 본전 사수","원금은 지켰지만 인플레를 겨우 따라갔어요."
-    else: grade,msg="📚 수업료를 낸 새내기","손실도 경험! 시장 원리의 중요성을 배웠습니다."
-    st.markdown(f"""<div class="panel-red" style="text-align:center;margin-top:8px;">
-      <div style="font-size:24px;font-weight:900;color:#fff;">{grade}</div>
-      <div style="font-size:15px;color:#bdd0e8;margin-top:6px;">{msg}</div></div>""", unsafe_allow_html=True)
-
-    # ════════ [패치③] 사후 학습효과 측정 퀴즈 ════════
-    st.markdown('<div class="ptitle" style="margin-top:18px;">🎓 부동산 상식 체크 (수료 시험)</div>', unsafe_allow_html=True)
-    if S.get("post_quiz") is None:
-        # 문제 3개 랜덤 출제 (보기 순서도 섞음)
-        picked=random.sample(POST_QUIZ_BANK, 3)
-        quizset=[]
-        for it in picked:
-            opts=it["options"][:]; random.shuffle(opts)
-            quizset.append({"q":it["q"],"answer":it["answer"],"options":opts})
-        S["post_quiz"]={"set":quizset,"submitted":False,"answers":{}}
-    pq=S["post_quiz"]
-
-    if not pq["submitted"]:
-        st.markdown('<div style="color:#eaf0f8;font-size:15px;margin-bottom:6px;">게임을 하며 익힌 부동산 기본 상식을 확인해봐요. 결과로 학습 효과를 측정합니다.</div>', unsafe_allow_html=True)
-        for qi,item in enumerate(pq["set"]):
-            st.markdown(f'<div style="font-weight:700;color:#fff;margin:10px 0 4px;">Q{qi+1}. {item["q"]}</div>', unsafe_allow_html=True)
-            pq["answers"][qi]=st.radio(f"q{qi}", item["options"], key=f"pq_{qi}",
-                                       label_visibility="collapsed", index=None)
-        if st.button("📝 제출하고 채점하기", use_container_width=True, key="pq_submit"):
-            pq["submitted"]=True; st.rerun()
-    else:
-        correct=sum(1 for qi,item in enumerate(pq["set"]) if pq["answers"].get(qi)==item["answer"])
-        total=len(pq["set"])
-        post_rate=correct/total*100
-        # 사전 수준: 자격시험 첫 시도 정답이면 '이해함', 아니면 '미흡'
-        pre_ok = S.get("pre_quiz_first_try")
-        pre_txt = ("높음 (자격시험 1회 통과)" if pre_ok else "낮음 (자격시험 재시도)") if pre_ok is not None else "미측정"
-        # 학습효과 한 줄 진단
-        if post_rate>=100: diag="완벽 이해 — 부동산 매매 기본 원리를 정확히 파악했습니다."; bc="#2ecc71"
-        elif post_rate>=67: diag="양호 — 사고 파는 데 필요한 핵심을 대체로 이해했습니다."; bc="#FFC233"
-        else: diag="복습 권장 — 대출·금리·수익 개념을 다시 떠올려보세요."; bc="#FF6347"
-        rows=""
-        for qi,item in enumerate(pq["set"]):
-            ua=pq["answers"].get(qi); ok=ua==item["answer"]
-            mark="✅" if ok else "❌"
-            rows+=f'<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px;color:#dce6f2;">{mark} Q{qi+1}. 정답: <b style="color:#7CFFAA;">{item["answer"]}</b>'
-            if not ok: rows+=f' <span style="color:#FF8b7b;">(내 답: {ua or "무응답"})</span>'
-            rows+='</div>'
-        st.markdown(f"""<div class="quiz-result">
-          <div class="qr-head">🎓 수료 시험 결과 — 학습효과 측정</div>
-          <div class="qr-score">사후 정답률: <b style="color:{bc};">{correct}/{total} ({post_rate:.0f}%)</b><br>
-          사전 이해도(게임 시작 시): {pre_txt}</div>
-          <div class="qr-badge" style="background:{bc}22;color:{bc};">{diag}</div>
-          <div style="margin-top:10px;">{rows}</div>
+          <div class="report-label">실질 수익 (대출이자·인플레이션 반영)</div>
+          <div style="margin-top:10px;font-size:15px;color:#FFD700;font-weight:800;">{style}</div>
+          <div style="font-size:13px;color:#bdd0e8;">{sdesc} · {style2}</div>
         </div>""", unsafe_allow_html=True)
-        st.markdown('<div style="color:#bdd0e8;font-size:14px;margin-top:6px;">※ 사전(게임 시작 자격시험) → 사후(이 시험)의 정답을 비교해 게임의 학습 효과를 자가 측정합니다.</div>', unsafe_allow_html=True)
 
+    # ════════ 2) AI 리그 순위 + 실질수익 상세(압축) 한 박스 ════════
     if S["npcs"]:
-        st.markdown('<div class="ptitle" style="margin-top:16px;">🏆 AI 투자 리그 최종 결과</div>', unsafe_allow_html=True)
-        start=REGIONS[S["region"]]["capital"]
-        player_nw=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+        st.markdown('<div class="ptitle" style="margin-top:16px;">🏆 최종 순위 & 수익 분석</div>', unsafe_allow_html=True)
+        start_cap=REGIONS[S["region"]]["capital"]
+        player_nw=net_worth
         board=[("🙋 플레이어(나)", player_nw, "나", "-")]
         for name,npc in S["npcs"].items():
             board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, NPCS[name]['style']))
         board.sort(key=lambda x:x[1], reverse=True)
         medals=["🥇","🥈","🥉","4️⃣"]
         rows=""
-        for i,(label,nw,key,style) in enumerate(board):
-            rate2=(nw-start)/start*100
+        for i,(label,nw,key,stl) in enumerate(board):
+            r2=(nw-start_cap)/start_cap*100
             hl="background:rgba(255,215,0,.15);" if key=="나" else ""
             rows+=f"""<div class="rank-row" style="{hl}">
               <span class="rank-medal">{medals[i]}</span>
-              <span class="rank-name">{label} <span style="font-size:13px;color:#9fb4d0;">{style if style!='-' else '플레이어'}</span></span>
+              <span class="rank-name">{label} <span style="font-size:13px;color:#9fb4d0;">{stl if stl!='-' else '나'}</span></span>
               <span class="rank-nw">{won(nw)}</span>
-              <span class="rank-rate" style="color:{'#2ecc71' if rate2>=0 else '#FF6347'};">{rate2:+.1f}%</span>
+              <span class="rank-rate" style="color:{'#2ecc71' if r2>=0 else '#FF6347'};">{r2:+.1f}%</span>
             </div>"""
-        st.markdown(f'<div class="rank-board">{rows}</div>', unsafe_allow_html=True)
+        # 실질수익 상세를 한 줄 압축 표기 (계산 과정을 한 박스에)
+        calc_line=(f'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);'
+                   f'font-size:14px;color:#cfe0f2;line-height:1.7;">'
+                   f'순자산 {won(net_worth)} − 초기자본 {won(start_cap)} = 명목수익 '
+                   f'<b style="color:{"#7CFFAA" if nominal>=0 else "#FF8b7b"};">{"+" if nominal>=0 else ""}{won(nominal)}</b><br>'
+                   f'　└ 대출이자 −{won(S["total_interest"])} · 물가보정 −{won(inflation_adj)}(연평균 {infl_avg*100:.1f}%) '
+                   f'→ <b style="color:{bigcol};">실질수익 {sign}{won(real)}</b></div>')
+        st.markdown(f'<div class="rank-board">{rows}{calc_line}</div>', unsafe_allow_html=True)
+        if S.get("inflation_history"):
+            infl_line=" · ".join(f"{START_YEAR+i}년 {r*100:.1f}%" for i,r in enumerate(S["inflation_history"]))
+            st.markdown(f'<div style="color:#bdd0e8;font-size:13px;margin-top:4px;">📈 연도별 물가(변동): {infl_line}</div>', unsafe_allow_html=True)
 
+        # AI 게임 분석 (승패+성향 한 번에)
         if "ai_end_analysis" not in st.session_state:
             player_rank=next(i for i,(_,_,k,_) in enumerate(board) if k=="나")+1
-            board_str="\n".join(f"{i+1}위 {lbl} 순자산 {won(nw)} 수익률 {(nw-start)/start*100:+.1f}%" for i,(lbl,nw,k,s) in enumerate(board))
-            nw_end=player_nw
+            board_str="\n".join(f"{i+1}위 {lbl} 순자산 {won(nw)} 수익률 {(nw-start_cap)/start_cap*100:+.1f}%" for i,(lbl,nw,k,s) in enumerate(board))
             prompt=f"""부동산 투자 시뮬레이션 게임({TURN_MAX}턴)이 끝났습니다. 아래 결과를 분석해주세요.
 
 [최종 순위]
@@ -1301,44 +1261,29 @@ elif S["phase"]=="end":
 
 [플레이어 투자 기록]
 - 총 매수 {S['buy_count']}회 (아파트 {S['apt_count']} / 수익형 {S['rent_count']})
-- 최대 대출 {won(S['max_debt'])}, 최종 순자산 {won(nw_end)}
+- 최대 대출 {won(S['max_debt'])}, 최종 순자산 {won(net_worth)}
 - 획득 업적: {', '.join(S['achievements']) if S['achievements'] else '없음'}
 
 아래 두 부분으로 한국어로 답하세요:
 
-【승패 요인】 플레이어가 왜 {player_rank}위가 되었는지 AI 투자자들과 비교해 4줄 내외로.
-【투자 성향】 플레이어 성향(공격형/보수형/레버리지형/가치투자형/임대사업형 중 하나)과 강점·개선점을 3줄 내외로."""
+【승패 요인】 플레이어가 왜 {player_rank}위가 되었는지 AI 투자자들과 비교해 3줄 내외로.
+【투자 성향】 플레이어 성향과 강점·개선점을 2줄 내외로."""
             with st.spinner("🤖 게임 결과 분석 중..."):
                 st.session_state["ai_end_analysis"]=call_gemini(prompt,2048)
         _end_ai = st.session_state.get("ai_end_analysis","")
         st.markdown(f'<div class="ai-box"><div class="ai-title">🤖 AI 게임 분석 — 승패 요인 & 투자 성향</div>{_end_ai}</div>', unsafe_allow_html=True)
         if _end_ai.startswith("⚠️"):
-            st.caption("⏳ AI 요청이 몰렸어요. 페이지를 새로고침하면 다시 시도합니다.")
+            st.markdown('<div style="color:#bdd0e8;font-size:13px;">⏳ AI 요청이 몰렸어요. 새로고침하면 다시 시도합니다.</div>', unsafe_allow_html=True)
 
-    if S["apt_count"]>S["rent_count"]: style,sdesc="📈 가치투자자","아파트 시세차익 중심으로 투자했습니다"
-    elif S["rent_count"]>S["apt_count"]: style,sdesc="🏠 임대사업가","월세수익형 매물로 안정적 현금흐름을 추구했습니다"
-    else: style,sdesc="⚖️ 균형투자자","시세차익과 월세수익을 고르게 노렸습니다"
-    if S["max_debt"]>=50000: style2="· 레버리지 적극 활용형"
-    elif S["max_debt"]==0: style2="· 무대출 보수형"
-    else: style2="· 적정 레버리지형"
-    st.markdown(f"""<div class="panel" style="text-align:center;margin-top:10px;">
-      <div style="font-size:15px;color:#9fb4d0;">나의 투자 스타일</div>
-      <div style="font-size:20px;font-weight:900;color:#FFD700;margin:4px 0;">{style}</div>
-      <div style="font-size:14px;color:#bdd0e8;">{sdesc} {style2}</div>
-    </div>""", unsafe_allow_html=True)
-
-    if S["achievements"]:
-        badges="".join(f'<span class="ach-badge">{ACHIEVEMENTS[k][0]}</span>' for k in S["achievements"])
-        st.markdown(f'<div class="ptitle" style="margin-top:14px;">🏆 획득 업적 ({len(S["achievements"])}개)</div><div class="ach-badges">{badges}</div>', unsafe_allow_html=True)
-
+    # ════════ 3) 순자산 추이 그래프 (+ 업적 압축) ════════
     final_year=START_YEAR+S["turn"]-1
-    final_nw=S["capital"]+sum(L["current"] for L in S["owned"])-S["debt"]
+    final_nw=net_worth
     hist=[h for h in S["networth_history"] if h[0]!=final_year]+[(final_year, final_nw)]
     hist=sorted(hist, key=lambda x:x[0])
     if len(hist)>=2:
         st.markdown('<div class="ptitle" style="margin-top:16px;">📈 연도별 순자산 추이</div>', unsafe_allow_html=True)
         W,H,PAD=560,220,46
-        ys=[nw for _,nw in hist]; xs=[y for y,_ in hist]
+        ys=[nw for _,nw in hist]
         ymin,ymax=min(ys),max(ys)
         if ymax==ymin: ymax=ymin+1
         def px(i): return PAD+(W-2*PAD)*i/(len(hist)-1)
@@ -1365,13 +1310,63 @@ elif S["phase"]=="end":
         </svg>'''
         st.markdown(svg, unsafe_allow_html=True)
         change=final_nw-start_cap
-        if change>=0:
-            st.markdown(f'<div class="graph-cap" style="color:#2ecc71;">📈 {len(hist)}년 동안 순자산이 <b>{won(abs(change))}</b> 늘었어요!</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="graph-cap" style="color:#FF6347;">📉 {len(hist)}년 동안 순자산이 <b>{won(abs(change))}</b> 줄었어요.</div>', unsafe_allow_html=True)
+        gcol="#2ecc71" if change>=0 else "#FF6347"
+        gtxt=f'📈 {len(hist)}년간 순자산이 <b>{won(abs(change))}</b> 늘었어요!' if change>=0 else f'📉 {len(hist)}년간 순자산이 <b>{won(abs(change))}</b> 줄었어요.'
+        st.markdown(f'<div class="graph-cap" style="color:{gcol};">{gtxt}</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="ptitle" style="margin-top:14px;">📜 전체 거래 기록</div>', unsafe_allow_html=True)
-    for e in S["log"]: st.markdown(f'<div class="log-card">{e}</div>', unsafe_allow_html=True)
+    # 획득 업적 (그래프 아래 한 줄 압축)
+    if S["achievements"]:
+        badges="".join(f'<span class="ach-badge">{ACHIEVEMENTS[k][0]}</span>' for k in S["achievements"])
+        st.markdown(f'<div style="margin-top:10px;"><span style="font-size:14px;color:#9fb4d0;">🏆 획득 업적 {len(S["achievements"])}개 &nbsp;</span><span class="ach-badges" style="display:inline-flex;">{badges}</span></div>', unsafe_allow_html=True)
+
+    # ════════ 4) 전체 거래 기록 (접기 — 늘어짐 방지) ════════
+    with st.expander(f"📜 전체 거래 기록 ({len(S['log'])}건) 펼치기"):
+        for e in S["log"]: st.markdown(f'<div class="log-card">{e}</div>', unsafe_allow_html=True)
+
+    # ════════ 5) 부동산 상식 체크 (맨 끝 — 결과를 다 본 뒤 학습 점검) ════════
+    st.markdown('<div class="ptitle" style="margin-top:18px;">🎓 부동산 상식 체크 (수료 시험)</div>', unsafe_allow_html=True)
+    if S.get("post_quiz") is None:
+        picked=random.sample(POST_QUIZ_BANK, 3)
+        quizset=[]
+        for it in picked:
+            opts=it["options"][:]; random.shuffle(opts)
+            quizset.append({"q":it["q"],"answer":it["answer"],"options":opts})
+        S["post_quiz"]={"set":quizset,"submitted":False,"answers":{}}
+    pq=S["post_quiz"]
+
+    if not pq["submitted"]:
+        st.markdown('<div style="color:#eaf0f8;font-size:15px;margin-bottom:6px;">게임을 하며 익힌 부동산 기본 상식을 확인해봐요. 결과로 학습 효과를 측정합니다.</div>', unsafe_allow_html=True)
+        for qi,item in enumerate(pq["set"]):
+            st.markdown(f'<div style="font-weight:700;color:#fff;margin:10px 0 4px;">Q{qi+1}. {item["q"]}</div>', unsafe_allow_html=True)
+            pq["answers"][qi]=st.radio(f"q{qi}", item["options"], key=f"pq_{qi}",
+                                       label_visibility="collapsed", index=None)
+        if st.button("📝 제출하고 채점하기", use_container_width=True, key="pq_submit"):
+            pq["submitted"]=True; st.rerun()
+    else:
+        correct=sum(1 for qi,item in enumerate(pq["set"]) if pq["answers"].get(qi)==item["answer"])
+        total=len(pq["set"])
+        post_rate=correct/total*100
+        pre_ok = S.get("pre_quiz_first_try")
+        pre_txt = ("높음 (자격시험 1회 통과)" if pre_ok else "낮음 (자격시험 재시도)") if pre_ok is not None else "미측정"
+        if post_rate>=100: diag="완벽 이해 — 부동산 매매 기본 원리를 정확히 파악했습니다."; bc="#2ecc71"
+        elif post_rate>=67: diag="양호 — 사고 파는 데 필요한 핵심을 대체로 이해했습니다."; bc="#FFC233"
+        else: diag="복습 권장 — 대출·금리·수익 개념을 다시 떠올려보세요."; bc="#FF6347"
+        rows=""
+        for qi,item in enumerate(pq["set"]):
+            ua=pq["answers"].get(qi); ok=ua==item["answer"]
+            mark="✅" if ok else "❌"
+            rows+=f'<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px;color:#dce6f2;">{mark} Q{qi+1}. 정답: <b style="color:#7CFFAA;">{item["answer"]}</b>'
+            if not ok: rows+=f' <span style="color:#FF8b7b;">(내 답: {ua or "무응답"})</span>'
+            rows+='</div>'
+        st.markdown(f"""<div class="quiz-result">
+          <div class="qr-head">🎓 수료 시험 결과 — 학습효과 측정</div>
+          <div class="qr-score">사후 정답률: <b style="color:{bc};">{correct}/{total} ({post_rate:.0f}%)</b><br>
+          사전 이해도(게임 시작 시): {pre_txt}</div>
+          <div class="qr-badge" style="background:{bc}22;color:{bc};">{diag}</div>
+          <div style="margin-top:10px;">{rows}</div>
+        </div>""", unsafe_allow_html=True)
+        st.markdown('<div style="color:#bdd0e8;font-size:14px;margin-top:6px;">※ 사전(게임 시작 자격시험) → 사후(이 시험)의 정답을 비교해 게임의 학습 효과를 자가 측정합니다.</div>', unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🔄 다시 시작", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
