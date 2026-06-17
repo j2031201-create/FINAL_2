@@ -1136,12 +1136,8 @@ elif S["phase"]=="play":
 
 # ─────────────────────────────────────────────────────
 # 화면 C: 결산 리포트
-# ─────────────────────────────────────────────────────elif S["phase"]=="end":
-    # 결과 진입 시 스크롤을 항상 최상단으로 (퀴즈 위치로 튀는 문제 방지)
-    st.markdown("""<script>
-      window.parent.document.querySelector('section.main')?.scrollTo(0,0);
-      window.scrollTo(0,0);
-    </script>""", unsafe_allow_html=True)
+# ─────────────────────────────────────────────────────
+elif S["phase"]=="end":
 
     if not S.get("_report_shown"):
         ph=st.empty()
