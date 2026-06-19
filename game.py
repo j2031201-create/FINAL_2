@@ -87,7 +87,8 @@ RARE_CHANCE = 0.30
 # ═══════════════════════════════════════════════════════
 US_REGION = {
     "Dallas": {"desc":"Texas · No state income tax · High property tax",
-               "level":"Difficulty: Medium","icon":"🤠","capital":200000}
+               "level":"Difficulty: Medium","icon":"🤠","capital":200000,
+               "vol":0.10,"apt_trend":0.0,"yield_trend":0.0}
 }
 # 미국 자산유형 (현지 관점)
 US_TYPE_SPEC = {
@@ -206,6 +207,14 @@ ACHIEVEMENTS = {
     "rare_get":("🌟 희귀 매물 획득","전설의 매물을 손에 넣었습니다!"),
     "no_debt":("🛡️ 무대출 플레이","대출 없이 5턴을 버텼습니다!"),
 }
+ACHIEVEMENTS_US = {
+    "first_buy":("🏆 First Buy","You bought your first property!"),
+    "first_loan":("🏦 First Mortgage","Welcome to the world of leverage!"),
+    "ten_eok":("💰 Millionaire","Net worth passed $1M!"),
+    "streak3":("🔥 3-Win Streak","Three profitable sales in a row!"),
+    "rare_get":("🌟 Rare Find","You grabbed a legendary listing!"),
+    "no_debt":("🛡️ Debt-Free Run","Survived 5 turns with no debt!"),
+  }
 
 # [패치③] 사후 학습효과 측정용 문제 은행
 # (감정평가 '방법 구분'은 무기 선택 자격시험으로 갈음 → 여기서는 게임을 하며 체득하는
@@ -531,34 +540,59 @@ def new_turn():
     S["selected"]=None; S["quiz"]=None; S["appraised"]=None
 
 def do_appraise(method,L):
+    _us = S.get("market_mode")=="us"
     cap=round(random.uniform(0.04,0.065),3)
-    if method=="수익환원법":
+    if method in ("수익환원법","Income Approach"):
         annual=L["monthly"]*12
         v=int(annual/cap)
-        steps=[f"1. 연 임대료: {L['monthly']:,}만 × 12 = {annual:,}만원",
-               f"2. 환원율 {cap*100:.1f}% 적용",
-               f"🎯 적정가치 = {annual:,} ÷ {cap*100:.1f}% = {v:,}만원"]
-        good = L["type"] in APPRAISAL["수익환원법"]["best_for"]
-        tip = "✅ 월세수익형 매물에 적합한 평가법!" if good else "⚠️ 시세차익형(아파트)엔 부정확할 수 있어요"
-    elif method=="거래사례비교법":
+        if _us:
+            steps=[f"1. Annual rent: ${L['monthly']:,} × 12 = ${annual:,}",
+                   f"2. Apply cap rate {cap*100:.1f}%",
+                   f"🎯 Value = ${annual:,} ÷ {cap*100:.1f}% = {usd(v)}"]
+            good = L["type"] in US_APPRAISAL["Income Approach"]["best_for"]
+            tip = "✅ Great for cash-flow assets!" if good else "⚠️ May be inaccurate for appreciation assets"
+        else:
+            steps=[f"1. 연 임대료: {L['monthly']:,}만 × 12 = {annual:,}만원",
+                   f"2. 환원율 {cap*100:.1f}% 적용",
+                   f"🎯 적정가치 = {annual:,} ÷ {cap*100:.1f}% = {v:,}만원"]
+            good = L["type"] in APPRAISAL["수익환원법"]["best_for"]
+            tip = "✅ 월세수익형 매물에 적합한 평가법!" if good else "⚠️ 시세차익형(아파트)엔 부정확할 수 있어요"
+    elif method in ("거래사례비교법","Sales Comparison"):
         adj=round(random.uniform(0.95,1.15),2); v=int(L["current"]*adj)
-        steps=[f"1. 인근 유사 거래 기준가: {L['current']:,}만원",
-               f"2. 입지·층·향 보정계수 {adj:.2f} 적용",
-               f"🎯 적정가치 = {v:,}만원"]
-        good = L["type"]=="아파트"
-        tip = "✅ 아파트(시세차익형)에 가장 적합!" if good else "📊 거래사례가 충분하면 유효해요"
-    else:
+        if _us:
+            steps=[f"1. Comparable sale base: {usd(L['current'])}",
+                   f"2. Adjust factor (location/floor) {adj:.2f}",
+                   f"🎯 Value = {usd(v)}"]
+            good = L["type"]=="Single-Family"
+            tip = "✅ Best for Single-Family!" if good else "📊 Valid with enough comparable sales"
+        else:
+            steps=[f"1. 인근 유사 거래 기준가: {L['current']:,}만원",
+                   f"2. 입지·층·향 보정계수 {adj:.2f} 적용",
+                   f"🎯 적정가치 = {v:,}만원"]
+            good = L["type"]=="아파트"
+            tip = "✅ 아파트(시세차익형)에 가장 적합!" if good else "📊 거래사례가 충분하면 유효해요"
+    else:  # Cost Approach / 원가법
         land=int(L["current"]*0.50); build=int(L["current"]*0.45)
         dep=int(build*random.uniform(0.25,0.45))
         v=land+build-dep
-        steps=[f"1. 토지가격: {land:,}만원",
-               f"2. 건축비 {build:,}만 − 감가상각 {dep:,}만원",
-               f"🎯 재조달원가 = {v:,}만원 (시장가 대비 낮음)"]
-        tip = "⚠️ 원가법은 시장 프리미엄·입지 가치를 반영 못해 항상 낮게 나와요. 통건물 매입이 아니면 실거래엔 부적합!"
+        if _us:
+            steps=[f"1. Land value: {usd(land)}",
+                   f"2. Build {usd(build)} − depreciation {usd(dep)}",
+                   f"🎯 Replacement cost = {usd(v)} (below market)"]
+            tip = "⚠️ Cost approach ignores location premium; usually comes out low."
+        else:
+            steps=[f"1. 토지가격: {land:,}만원",
+                   f"2. 건축비 {build:,}만 − 감가상각 {dep:,}만원",
+                   f"🎯 재조달원가 = {v:,}만원 (시장가 대비 낮음)"]
+            tip = "⚠️ 원가법은 시장 프리미엄·입지 가치를 반영 못해 항상 낮게 나와요. 통건물 매입이 아니면 실거래엔 부적합!"
     if L.get("rare"):
         v = int(max(v, L["current"]) * (1.18 + L.get("appr_bonus",0)))
-        steps.append(f"🌟 희귀매물 미래가치 프리미엄 반영 → 최종 {v:,}만원")
-        tip = "🌟 개발 호재가 반영된 희귀 매물! 현재 호가보다 미래가치가 높습니다."
+        if _us:
+            steps.append(f"🌟 Rare-property future-value premium → {usd(v)}")
+            tip = "🌟 Development upside priced in — future value tops the current ask."
+        else:
+            steps.append(f"🌟 희귀매물 미래가치 프리미엄 반영 → 최종 {v:,}만원")
+            tip = "🌟 개발 호재가 반영된 희귀 매물! 현재 호가보다 미래가치가 높습니다."
     return v,steps,tip
 
 # ═══════════════════════════════════════════════════════
@@ -636,16 +670,19 @@ def buy(lid):
     deposit=L["deposit"]
     need_cash = cost - deposit
     year=START_YEAR+S["turn"]-1
+    _us = S.get("market_mode")=="us"
     if need_cash > S["capital"]:
         loan = need_cash - S["capital"]
         max_l = max_loan_for(cost)
         if loan > max_l:
             return False
         S["debt"]+=loan; S["capital"]=0
-        S["log"].append(f"{year}년: {L['name']} 매수 (대출 {won(loan)})")
+        if _us: S["log"].append(f"{year}: Bought {L['name']} (mortgage {won(loan)})")
+        else: S["log"].append(f"{year}년: {L['name']} 매수 (대출 {won(loan)})")
     else:
         S["capital"]-=need_cash
-        S["log"].append(f"{year}년: {L['name']} 매수")
+        if _us: S["log"].append(f"{year}: Bought {L['name']}")
+        else: S["log"].append(f"{year}년: {L['name']} 매수")
     S["deposit_total"]+=deposit
     L["purchase_price"]=cost; S["owned"].append(L)
     S["market"]=[x for x in S["market"] if x["id"]!=lid]
@@ -678,7 +715,10 @@ def sell(i):
     if p>=0: S["win_streak"]+=1
     else: S["win_streak"]=0
     year=START_YEAR+S["turn"]-1
-    S["log"].append(f"{year}년: {L['name']} 매도 (손익 {'+' if p>=0 else ''}{won(p)})")
+    if S.get("market_mode")=="us":
+        S["log"].append(f"{year}: Sold {L['name']} (P/L {'+' if p>=0 else ''}{won(p)})")
+    else:
+        S["log"].append(f"{year}년: {L['name']} 매도 (손익 {'+' if p>=0 else ''}{won(p)})")
     S["owned"].pop(i)
     check_achievements()
 
@@ -687,7 +727,8 @@ def advance():
         S["phase"]="end"; st.rerun()
     else:
         ph=st.empty()
-        for msg in ["📊 시장 분석 중...","🏗️ 개발 호재 반영 중...","💰 자산 재계산 중..."]:
+        _adv_msgs = ["📊 Analyzing market...","🏗️ Applying news...","💰 Recalculating assets..."] if S.get("market_mode")=="us" else ["📊 시장 분석 중...","🏗️ 개발 호재 반영 중...","💰 자산 재계산 중..."]
+        for msg in _adv_msgs:
             ph.markdown(f'<div class="turn-loading">{msg}</div>', unsafe_allow_html=True)
             time.sleep(0.5)
         ph.empty()
@@ -1102,8 +1143,9 @@ elif S["phase"]=="play":
 
     if S["new_achievements"]:
         toasts=""
+        _ach_src = ACHIEVEMENTS_US if _us else ACHIEVEMENTS
         for key in S["new_achievements"]:
-            title,desc=ACHIEVEMENTS[key]
+            title,desc=_ach_src[key]
             toasts+=f'<div class="ach-toast"><div class="ach-title">{title}</div><div class="ach-desc">{desc}</div></div>'
         st.markdown(f'<div class="ach-wrap">{toasts}</div>', unsafe_allow_html=True)
         S["new_achievements"]=[]
@@ -1495,7 +1537,8 @@ elif S["phase"]=="end":
 
     if not S.get("_report_shown"):
         ph=st.empty()
-        for msg in ["📊 최종 자산 집계 중...","🧮 실질 수익 계산 중...","📑 리포트 생성 중..."]:
+        _rep_msgs = ["📊 Tallying final assets...","🧮 Computing real profit...","📑 Generating report..."] if S.get("market_mode")=="us" else ["📊 최종 자산 집계 중...","🧮 실질 수익 계산 중...","📑 리포트 생성 중..."]
+        for msg in _rep_msgs:
             ph.markdown(f'<div style="text-align:center;padding:60px;font-size:22px;font-weight:800;color:#FF6b5e;">{msg}</div>', unsafe_allow_html=True)
             time.sleep(0.6)
         ph.empty(); S["_report_shown"]=True
