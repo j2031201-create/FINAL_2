@@ -144,7 +144,7 @@ US_NEWS_POOL = [
      "impact":"Higher tax bills squeeze cash flow."},
     {"head":"🏪 Rent demand surges downtown","i1":"Rent +12%","i2":"Yield ↑","mood":"good","delta":0.02,"rate":0,"rent_boost":0.12,
      "impact":"Rents rise! Landlords earn more cash flow."},
-    {"head":"📉 Housing oversupply報道","i1":"Home prices -6%","i2":"More inventory","mood":"bad","delta":-0.06,"rate":0,
+    {"head":"📉 Housing oversupply","i1":"Home prices -6%","i2":"More inventory","mood":"bad","delta":-0.06,"rate":0,
      "impact":"Too many homes for sale; prices dip."},
 ]
 US_NPCS = {
@@ -338,7 +338,7 @@ def call_gemini(prompt: str, max_tokens: int = 2048) -> str:
 
 def type_thumb(t, h=60):
     spec=TYPE_SPEC[t]
-    src=img_b64(spec["img"])
+    src=img_b64(spec["img"]) if spec.get("img") else None
     if src:
         return f'<div class="thumb" style="background:url(\'{src}\') center/cover;height:{h}px;"></div>'
     c=spec["color"]
