@@ -149,9 +149,9 @@ US_NEWS_POOL = [
      "impact":"Too many homes for sale; prices dip."},
 ]
 US_NPCS = {
-    "Mr. Park": {"style":"공격형","desc":"Leverage-heavy · prefers Single-Family · buys aggressively in up markets","emoji":"🔥"},
-    "Mr. Kim":  {"style":"안정형","desc":"Cash-focused · minimal debt · risk-averse","emoji":"🛡️"},
-    "Ms. Lee":  {"style":"수익형","desc":"Prefers Multifamily/Condo · values monthly cash flow","emoji":"💵"},
+    "Mr. Park": {"style":"공격형","style_en":"Aggressive","desc":"Leverage-heavy · prefers Single-Family · buys aggressively in up markets","emoji":"🔥"},
+    "Mr. Kim":  {"style":"안정형","style_en":"Conservative","desc":"Cash-focused · minimal debt · risk-averse","emoji":"🛡️"},
+    "Ms. Lee":  {"style":"수익형","style_en":"Cash-flow","desc":"Prefers Multifamily/Condo · values monthly cash flow","emoji":"💵"},
 }
 US_LIFE_EVENTS = [
     {"icon":"👶","name":"New baby","effect":"Happy, but living costs rose","cap":-6000},
@@ -1198,7 +1198,8 @@ elif S["phase"]=="play":
         _me_lbl = "🙋 You" if _us else "🙋 플레이어(나)"
         board=[(_me_lbl, player_nw, "나")]
         for name,npc in S["npcs"].items():
-            board.append((f"{NPCS[name]['emoji']} {name}({NPCS[name]['style']})", npc_networth(npc), name))
+            _stl_p = NPCS[name].get("style_en", NPCS[name]['style']) if _us else NPCS[name]['style']
+            board.append((f"{NPCS[name]['emoji']} {name}({_stl_p})", npc_networth(npc), name))
         board.sort(key=lambda x:x[1], reverse=True)
         medals=["🥇","🥈","🥉","4️⃣"]
         rows=""
@@ -1652,7 +1653,7 @@ elif S["phase"]=="end":
             hl="background:rgba(255,215,0,.15);" if key=="나" else ""
             rows+=f"""<div class="rank-row" style="{hl}">
               <span class="rank-medal">{medals[i]}</span>
-              <span class="rank-name">{label} <span style="font-size:13px;color:#9fb4d0;">{stl if stl!='-' else '나'}</span></span>
+              <span class="rank-name">{label} <span style="font-size:13px;color:#9fb4d0;">{stl if stl!='-' else ('You' if _us else '나')}</span></span>
               <span class="rank-nw">{won(nw)}</span>
               <span class="rank-rate" style="color:{'#2ecc71' if r2>=0 else '#FF6347'};">{r2:+.1f}%</span>
             </div>"""
