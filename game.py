@@ -1765,7 +1765,8 @@ Answer in English in two parts:
 
     # 획득 업적 (그래프 아래 한 줄 압축)
     if S["achievements"]:
-        badges="".join(f'<span class="ach-badge">{ACHIEVEMENTS[k][0]}</span>' for k in S["achievements"])
+        _ach_src2 = ACHIEVEMENTS_US if _us else ACHIEVEMENTS
+        badges="".join(f'<span class="ach-badge">{_ach_src2[k][0]}</span>' for k in S["achievements"])
         _ach_lbl = f'🏆 Achievements: {len(S["achievements"])}' if _us else f'🏆 획득 업적 {len(S["achievements"])}개'
         st.markdown(f'<div style="margin-top:10px;"><span style="font-size:14px;color:#9fb4d0;">{_ach_lbl} &nbsp;</span><span class="ach-badges" style="display:inline-flex;">{badges}</span></div>', unsafe_allow_html=True)
 
