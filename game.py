@@ -1635,8 +1635,7 @@ elif S["phase"]=="end":
             <div class="result-sub">{sub}</div>
             <div class="result-rows">
               <div class="rrow"><span>{"💰 Real Profit" if _us else "💰 실질 수익"}</span><span class="rval" style="color:{bigcol};">{sign}{won(real)}</span></div>
-              <div class="rrow"><span>{"📊 Return Rate" if _us else "📊 투자 수익률"}</span><span class="rval" style="color:{bigcol};">{rate:+.1f}%</span></div>
-              <div class="rrow total" style="border-top:2px solid {acc};"><span>{"🪙 Final Net Worth" if _us else "🪙 최종 순자산"}</span><span class="rval" style="color:{bigcol};">{won(net_worth)}</span></div>
+              <div class="rrow"><span>{"📊 Asset Growth" if _us else "📊 투자 수익률"}</span><span class="rval" style="color:{'#7CFFAA' if nominal>=0 else '#FF8b7b'};">{(nominal/start*100):+.1f}%</span></div>              <div class="rrow total" style="border-top:2px solid {acc};"><span>{"🪙 Final Net Worth" if _us else "🪙 최종 순자산"}</span><span class="rval" style="color:{bigcol};">{won(net_worth)}</span></div>
             </div>
             <div style="margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.2);">
               <span style="font-size:14px;color:#9fb4d0;">{"My Investment Style" if _us else "나의 투자 스타일"}</span><br>
