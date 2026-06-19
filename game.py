@@ -129,6 +129,9 @@ US_PROP_TAX = 0.022267       # 재산세 연 2.2267%
 US_INSURANCE = 0.008         # 주택보험 연 0.8%
 US_CPA_FEE_RATE = 0.015      # 회계사 고용비 (매각가의 1.5%)
 US_CAPGAIN_TAX = 0.20        # 회계사 고용 시 실양도세 (차익의 20%)
+US_FX_START = 1380.0         # 시작 환율 (원/$)
+US_FX_MIN_CH = -0.04         # 매 턴 환율 변동 하한 (-4%)
+US_FX_MAX_CH = 0.04          # 매 턴 환율 변동 상한 (+4%)
 
 US_NEWS_POOL = [
     {"head":"📉 Fed cuts interest rate","i1":"Home prices +5%","i2":"Mortgage rate -0.5%","mood":"good","delta":0.05,"rate":-0.5,
@@ -266,6 +269,8 @@ def init():
        "networth_history":[],
        # [패치①] 변동 물가: 매 턴 적용된 연 물가율을 기록 → 결과에서 누적 보정
        "inflation_history":[],
+       "fx_now":1380.0,            # 🇺🇸 현재 환율(원/$) — 미국 모드 전용
+       "fx_history":[],            # 🇺🇸 매 턴 환율 기록
        # [패치③] 학습효과 측정: 사전(자격시험) 1트 정답 여부 + 사후 퀴즈 결과
        "pre_quiz_first_try":None,   # True=첫 시도 정답 / False=틀린 뒤 정답
        "post_quiz":None,            # 결과화면 사후 퀴즈 {문항, 선택, 정답수}
@@ -532,6 +537,12 @@ def new_turn():
     infl = INFLATION + bias + random.uniform(-0.012, 0.012)
     infl = max(INFLATION_MIN, min(INFLATION_MAX, infl))
     S["inflation_history"].append(round(infl, 4))
+    # 🇺🇸 미국 모드: 매 턴 환율 변동 (원/$). 호재면 원화강세(환율↓), 악재면 원화약세(환율↑) 약하게
+    if S.get("market_mode")=="us":
+        fx_bias = -0.005 if S["news"]["mood"]=="good" else 0.005
+        fx_ch = fx_bias + random.uniform(US_FX_MIN_CH, US_FX_MAX_CH)
+        S["fx_now"] = round(S.get("fx_now",US_FX_START) * (1+fx_ch), 1)
+        S["fx_history"].append(S["fx_now"])
     S["life_event"]=None
     if S["turn"]>1 and random.random()<0.4:
         ev=random.choice(LIFE_EVENTS)
@@ -1681,6 +1692,34 @@ elif S["phase"]=="end":
                 infl_line=" · ".join(f"{START_YEAR+i}년 {r*100:.1f}%" for i,r in enumerate(S["inflation_history"]))
                 _infl_lbl="📈 연도별 물가(변동)"
             st.markdown(f'<div style="color:#bdd0e8;font-size:13px;margin-top:4px;">{_infl_lbl}: {infl_line}</div>', unsafe_allow_html=True)
+
+        # 🇺🇸 환율 효과 (미국 모드 전용) — 같은 $라도 원화 가치는 환율에 따라 달라진다
+        if _us and S.get("fx_history"):
+            fx0 = US_FX_START
+            fx1 = S["fx_now"]
+            fx_change_pct = (fx1-fx0)/fx0*100
+            krw_now = int(net_worth * fx1)        # 현재 순자산을 현재 환율로 환산
+            krw_at_start_fx = int(net_worth * fx0) # 같은 순자산을 시작 환율로 환산
+            fx_gain = krw_now - krw_at_start_fx    # 환차손익(원)
+            def _krw(v):
+                v=int(round(v)); neg=v<0; v=abs(v); eok=v//100000000; man=(v%100000000)//10000
+                s=(f"{eok}억 " if eok else "")+(f"{man:,}만원" if man else "원")
+                return ("-" if neg else "")+(s.strip() or "0원")
+            fx_col = "#7CFFAA" if fx_gain>=0 else "#FF8b7b"
+            fx_word = "won weakened (KRW↓)" if fx_change_pct>0 else "won strengthened (KRW↑)"
+            fx_note = ("A weaker won means each $ converts to more KRW → FX gain for a Korean investor."
+                       if fx_gain>=0 else
+                       "A stronger won means each $ converts to fewer KRW → FX loss for a Korean investor.")
+            st.markdown(f'''<div class="rank-board" style="border-color:#5dade2;margin-top:10px;">
+              <div class="rank-title" style="color:#5dade2;">💱 FX Effect (USD → KRW)</div>
+              <div style="font-size:14px;color:#cfe0f2;line-height:1.8;">
+                Exchange rate: ₩{fx0:,.0f} → ₩{fx1:,.0f} /$ ({fx_change_pct:+.1f}%, {fx_word})<br>
+                Net worth {won(net_worth)} → <b style="color:#fff;">{_krw(krw_now)}</b> at today's rate<br>
+                <span style="color:{fx_col};font-weight:800;">FX {'gain' if fx_gain>=0 else 'loss'}: {'+' if fx_gain>=0 else ''}{_krw(fx_gain)}</span>
+                <span style="color:#9fb4d0;font-size:13px;"> (vs. converting at the starting rate)</span><br>
+                <span style="color:#9fb4d0;font-size:13px;">{fx_note}</span>
+              </div>
+            </div>''', unsafe_allow_html=True)
 
         # AI 게임 분석 (승패+성향 한 번에)
         if "ai_end_analysis" not in st.session_state:
