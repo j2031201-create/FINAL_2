@@ -1666,6 +1666,7 @@ elif S["phase"]=="end":
         for name,npc in S["npcs"].items():
             _stl_e = NPCS[name].get("style_en", NPCS[name]['style']) if _us else NPCS[name]['style']
             board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, _stl_e))
+        board.sort(key=lambda x:x[1], reverse=True)
         medals=["🥇","🥈","🥉","4️⃣"]
         rows=""
         for i,(label,nw,key,stl) in enumerate(board):
