@@ -746,8 +746,8 @@ def advance():
 # ─────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
-html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+html,body,.stApp{font-family:'Inter','Noto Sans KR',sans-serif !important;
     background:#16273f !important;color:#eaf0f8 !important;font-size:15px;}
 #MainMenu,footer{display:none !important;}
 .main .block-container{padding:1rem 1.5rem 2rem !important;max-width:1500px !important;}
@@ -878,7 +878,7 @@ html,body,.stApp{font-family:'Urbanist','Noto Sans KR',sans-serif !important;
 .forecast-head{font-size:15px !important;font-weight:700;color:#FFC233;margin-bottom:6px;}
 .forecast-body{font-size:15px !important;color:#f0e0b0;line-height:1.6;}
 .log-item{font-size:14px !important;color:#9fb4d0;padding:3px 0;border-bottom:1px solid #2a4565;}
-.stButton>button{font-family:'Urbanist','Noto Sans KR',sans-serif !important;font-weight:700 !important;font-size:15px !important;
+.stButton>button{font-family:'Inter','Noto Sans KR',sans-serif !important;font-weight:700 !important;font-size:15px !important;
     border-radius:10px !important;background:#2d4a6b !important;border:1px solid #3a5a80 !important;
     color:#fff !important;transition:.12s !important;}
 .stButton>button:hover{background:#FF4136 !important;border-color:#FF4136 !important;transform:translateY(-1px);}
