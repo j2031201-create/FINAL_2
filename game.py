@@ -87,7 +87,7 @@ RARE_CHANCE = 0.30
 # ═══════════════════════════════════════════════════════
 US_REGION = {
     "Dallas": {"desc":"Texas · No state income tax · High property tax",
-               "level":"Difficulty: Medium","icon":"🤠","capital":200000,
+               "level":"Medium difficulty","icon":"🤠","capital":200000,
                "vol":0.10,"apt_trend":0.0,"yield_trend":0.0}
 }
 # 미국 자산유형 (현지 관점)
@@ -1106,7 +1106,7 @@ elif S["phase"]=="weapon":
                         q["tries"]=q.get("tries",0)+1
                         if S.get("pre_quiz_first_try") is None:
                             S["pre_quiz_first_try"]=False
-                        st.error("❌ Wrong! Re-read your selected method's description." if _us else "❌ 다시 골라보세요! (선택한 무기 설명을 다시 읽어보세요)")
+                        st.error("❌ Wrong! Re-read your method's description." if _us else "❌ 다시 골라보세요! (선택한 무기 설명을 다시 읽어보세요)")
         if st.button(("← Pick a different method" if _us else "← 다른 무기 다시 고르기"), key="wp_reset"):
             S["my_method"]=None; S["quiz"]=None; st.rerun()
 
@@ -1222,8 +1222,8 @@ elif S["phase"]=="play":
     mi=int(S["debt"]*(S["loan_rate"]/100)/12); rent=sum(L["monthly"] for L in S["owned"])
     cur_year=START_YEAR+S["turn"]-1
     if _us:
-        _st = {"cash":"💰 Cash","debt":"🏦 Mortgage","dep":"🔐 Deposit","mi":"Mo. interest",
-               "rate":"Rate","rent":"Mo. rent","own":"Owned","yr":"📅 Year","unit":""}
+        _st = {"cash":"💰 Cash","debt":"🏦 Mortgage","dep":"🔐 Deposit","mi":"Interest/mo",
+               "rate":"Rate","rent":"Rent/mo","own":"Owned","yr":"📅 Year","unit":""}
     else:
         _st = {"cash":"💰 현금","debt":"🏦 대출","dep":"🔐 보증금","mi":"월이자",
                "rate":"대출이율","rent":"월세수입","own":"보유","yr":"📅 연도","unit":"채"}
@@ -1255,10 +1255,10 @@ elif S["phase"]=="play":
             if _us:
                 if is_good:
                     mood_line="📈 Home prices expected to RISE next year"; mood_col="#2ecc71"
-                    advice_t="Buy this year"; advice_d="Buying before prices rise may be favorable."
+                    advice_t="Buy this year"; advice_d="Buying now, before prices climb, could pay off."
                 else:
                     mood_line="📉 Home prices expected to FALL next year"; mood_col="#FF4136"
-                    advice_t="Hold off this year"; advice_d="Cheaper, better deals may appear next year."
+                    advice_t="Hold off this year"; advice_d="Better deals may show up next year."
             else:
                 if is_good:
                     mood_line="📈 내년에 부동산 가격 상승 예상"; mood_col="#2ecc71"
@@ -1269,7 +1269,7 @@ elif S["phase"]=="play":
             conf_lv = 4 if is_good else 3
             conf_stars="★"*conf_lv+"☆"*(5-conf_lv)
             if _us:
-                conf_txt="The AI predicts this with relatively high confidence." if conf_lv>=4 else "An AI guess — it may be wrong."
+                conf_txt="The AI predicts this with relatively high confidence." if conf_lv>=4 else "Lower-confidence AI forecast."
             else:
                 conf_txt="AI가 비교적 높은 확률로 예측하고 있어요." if conf_lv>=4 else "AI 예측이지만 빗나갈 수도 있어요."
             issue=nn['head'].split(' ',1)[1] if ' ' in nn['head'] else nn['head']
@@ -1372,9 +1372,9 @@ elif S["phase"]=="play":
                 diff=ap["v"]-L["current"]
                 _gap = 2000 if not _us else 15000
                 if _us:
-                    if diff>_gap: st.success(f"💎 Undervalued! True value is {won(abs(diff))} above price (good buy!)")
-                    elif diff<-_gap: st.warning(f"⚠️ Overvalued! True value is {won(abs(diff))} below price (pricey)")
-                    else: st.info("📊 Fairly priced")
+                    if diff>_gap: st.success(f"💎 Undervalued! Worth {won(abs(diff))} more than the asking price (good buy!)")
+                    elif diff<-_gap: st.warning(f"⚠️ Overvalued! Worth {won(abs(diff))} less than the asking price (pricey)")
+                    else: st.info("📊 Fairly priced — close to its true value")
                 else:
                     if diff>_gap: st.success(f"💎 저평가! 진짜 가치가 가격보다 {won(abs(diff))} 높아요 (사면 이득!)")
                     elif diff<-_gap: st.warning(f"⚠️ 고평가! 진짜 가치가 가격보다 {won(abs(diff))} 낮아요 (비싼 편)")
@@ -1454,8 +1454,8 @@ elif S["phase"]=="play":
         # 🇺🇸 미국 모드: 보유비용·FIRPTA 누적 표시 추가
         _us_extra = ""
         if _us:
-            _us_extra = (f'<div class="disp-item"><span class="disp-label">Holding cost paid</span><br>{won(S.get("holding_paid",0))}</div>'
-                         f'<div class="disp-item"><span class="disp-label">FIRPTA/Tax paid</span><br>{won(S.get("firpta_paid",0))}</div>')
+            _us_extra = (f'<div class="disp-item"><span class="disp-label">Holding costs paid</span><br>{won(S.get("holding_paid",0))}</div>'
+                         f'<div class="disp-item"><span class="disp-label">Taxes paid (FIRPTA)</span><br>{won(S.get("firpta_paid",0))}</div>')
         st.markdown(f"""<div class="display">
           <div class="disp-item"><span class="disp-label">{_d['asset']}</span><br>{won(total_asset)}</div>
           <div class="disp-item"><span class="disp-label">{_d['net']}</span><br>{won(total_asset-S['debt'])}</div>
@@ -1571,11 +1571,11 @@ elif S["phase"]=="end":
     result_img = img_b64("win.png") if win else img_b64("lose.png")
 
     if _us:
-        if S.get("game_over"): headline,sub="💔 Bankrupt…","You couldn't cover the mortgage interest"
+        if S.get("game_over"): headline,sub="💔 Bankrupt…","You couldn't keep up with the mortgage"
         elif rate>=40: headline,sub="🏆 Success!","You became a savvy investor!"
         elif rate>=10: headline,sub="💼 Success!","You beat inflation with real returns!"
         elif rate>=0: headline,sub="👍 Broke even","You kept your principal, barely beating inflation"
-        else: headline,sub="📉 Tough year…","Rework your strategy and try again!"
+        else: headline,sub="📉 Tough run…","Rework your strategy and try again!"
     else:
         if S.get("game_over"): headline,sub="💔 파산했다…","대출 이자를 감당하지 못했습니다"
         elif rate>=40: headline,sub="🏆 성공했다!","당신은 현명한 영끌러가 되었습니다!"
