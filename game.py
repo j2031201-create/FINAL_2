@@ -198,6 +198,12 @@ GRADES = [
     (0.35, "🔥 영끌 고수","투자자"),
     (0.60, "👑 부동산 마스터","자산가"),
 ]
+GRADES_US = [
+    (0.0,  "🌱 Rookie Investor","새내기"),
+    (0.15, "💼 Active Investor","직장인"),
+    (0.35, "🔥 Leverage Pro","투자자"),
+    (0.60, "👑 Property Master","자산가"),
+]
 
 ACHIEVEMENTS = {
     "first_buy":("🏆 첫 매수","첫 부동산을 매입했습니다!"),
@@ -294,8 +300,9 @@ def get_grade():
     nw=assets-S["debt"]
     start=REGIONS[S["region"]]["capital"] if S["region"] else 100000
     rate=(nw-start)/start
-    g=GRADES[0]
-    for thr,name,avatar in GRADES:
+    _src = GRADES_US if S.get("market_mode")=="us" else GRADES
+    g=_src[0]
+    for thr,name,avatar in _src:
         if rate>=thr: g=(thr,name,avatar)
     return g[1],g[2],rate
 
