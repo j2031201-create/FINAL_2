@@ -1209,8 +1209,8 @@ elif S["phase"]=="play":
         _me_lbl = "🙋 You" if _us else "🙋 플레이어(나)"
         board=[(_me_lbl, player_nw, "나")]
         for name,npc in S["npcs"].items():
-            _stl_p = NPCS[name].get("style_en", NPCS[name]['style']) if _us else NPCS[name]['style']
-            board.append((f"{NPCS[name]['emoji']} {name}({_stl_p})", npc_networth(npc), name))
+            _stl_e = NPCS[name].get("style_en", NPCS[name]['style']) if _us else NPCS[name]['style']
+            board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, _stl_e))
         board.sort(key=lambda x:x[1], reverse=True)
         medals=["🥇","🥈","🥉","4️⃣"]
         rows=""
@@ -1577,7 +1577,15 @@ elif S["phase"]=="end":
     nominal=net_worth-start
     real=nominal-S["total_interest"]-inflation_adj
     rate=real/start*100
-    win = real>=0 and not S.get("game_over")
+    # 🇺🇸 미국 모드: 순위를 먼저 계산해 성공 판정에 반영 (1~2등이면 실질수익 마이너스여도 성공)
+    _player_rank = 1
+    if S["npcs"]:
+        _scap=REGIONS[S["region"]]["capital"]
+        _nws=[("me",net_worth)]+[(n,npc_networth(npc)) for n,npc in S["npcs"].items()]
+        _nws.sort(key=lambda x:x[1], reverse=True)
+        _player_rank = next(i for i,(k,_) in enumerate(_nws) if k=="me")+1
+    _rank_win = _us and (_player_rank<=2) and not S.get("game_over")
+    win = (real>=0 or _rank_win) and not S.get("game_over")
 
     cls="profit" if win else "loss"; sign="+" if real>=0 else ""
     result_img = img_b64("win.png") if win else img_b64("lose.png")
@@ -1587,7 +1595,9 @@ elif S["phase"]=="end":
         elif rate>=40: headline,sub="🏆 Success!","You became a savvy investor!"
         elif rate>=10: headline,sub="💼 Success!","You beat inflation with real returns!"
         elif rate>=0: headline,sub="👍 Broke even","You kept your principal, barely beating inflation"
-        else: headline,sub="📉 Tough run…","Rework your strategy and try again!"
+        elif _rank_win and _player_rank==1: headline,sub="🥇 Market Leader!","Taxes & interest ate your real profit, but you beat every AI rival!"
+        elif _rank_win: headline,sub="🥈 Strong Finish!","You ranked top-2 despite high US holding costs."
+        else: headline,sub="📉 Tough run…","US taxes & rates are steep — rework your strategy!"
     else:
         if S.get("game_over"): headline,sub="💔 파산했다…","대출 이자를 감당하지 못했습니다"
         elif rate>=40: headline,sub="🏆 성공했다!","당신은 현명한 영끌러가 되었습니다!"
@@ -1655,8 +1665,8 @@ elif S["phase"]=="end":
         _me = "🙋 You" if _us else "🙋 플레이어(나)"
         board=[(_me, player_nw, "나", "-")]
         for name,npc in S["npcs"].items():
-            board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, NPCS[name]['style']))
-        board.sort(key=lambda x:x[1], reverse=True)
+            _stl_e = NPCS[name].get("style_en", NPCS[name]['style']) if _us else NPCS[name]['style']
+            board.append((f"{NPCS[name]['emoji']} {name}", npc_networth(npc), name, _stl_e))
         medals=["🥇","🥈","🥉","4️⃣"]
         rows=""
         for i,(label,nw,key,stl) in enumerate(board):
